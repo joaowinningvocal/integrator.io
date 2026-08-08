@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Ajustes{% endblock %}
+{% block body %}
+
+<h1>Ajustes</h1>
+<p class="sub">Credenciais da Twilio vivem em variáveis de ambiente, nunca aqui.</p>
+
+<div class="panel">
+  <h2 style="margin-top:0">Conexão com a Twilio</h2>
+  {% if twilio_ready %}
+    <p class="meter"><b style="color:var(--live)">Credenciais presentes.</b>
+       O hub consegue enviar quando o modo permitir.</p>
+  {% else %}
+    <div class="note">
+      <code>TWILIO_ACCOUNT_SID</code> e <code>TWILIO_AUTH_TOKEN</code> não estão definidos.
+      Configure no Railway e faça o redeploy — sem eles todo envio falha com
+      <code>no_credentials</code>.
+    </div>
+  {% endif %}
+
+  <label class="raw">URL de callback de status — cole no campo Status Callback da Twilio</label>
+  {% if callback %}
+    <div class="url-box">{{ callback }}</div>
+    <p class="meter">O hub já manda essa URL em cada envio. É o que faz o status virar
+       <b>Entregue</b> em vez de parar em <b>Saiu da Twilio</b>.</p>
+  {% else %}
+    <div class="note">Defina <code>PUBLIC_BASE_URL</code> no Railway para ativar o callback.
+      Sem ele o hub sabe que a mensagem saiu, mas não se chegou.</div>
+  {% endif %}
+</div>
+
+<div class="panel">
+  <h2 style="margin-top:0">Allowlist do modo Teste</h2>
+  <p class="sub">No modo Teste, só estes números recebem. Qualquer outro é bloqueado e registrado.</p>
+  <form method="post">
+    <label class="raw" for="allow">Um número por linha, ou separados por vírgula</label>
+    <textarea id="allow" name="test_allowlist" rows="4"
+      placeholder="+17025551234">{{ allowlist }}</textarea>
+    {% if parsed %}
+      <p class="meter">Reconhecidos: <b>{{ parsed | join(', ') }}</b></p>
+    {% endif %}
+    <p></p>
+    <button class="btn" type="submit">Salvar allowlist</button>
+  </form>
+</div>
+
+<h2>Entregas recentes</h2>
+{% if deliveries %}
+<div class="panel">
+  <table>
+    <thead><tr><th>Quando</th><th>Venue</th><th>Para</th><th>Status</th><th>SID</th><th>Erro</th></tr></thead>
+    <tbody>
+    {% for d in deliveries %}
+      {% set lbl, tone = delivery_labels.get(d.status, (d.status, 'hold')) %}
+      <tr>
+        <td>{{ d.updated_at[:16].replace('T', ' ') }}</td>
+        <td>{{ d.venue_name or '—' }}</td>
+        <td>{{ d.to_number }}</td>
+        <td><span class="state {{ tone }}">{{ lbl }}</span></td>
+        <td>{{ d.provider_sid or '—' }}</td>
+        <td>{{ d.error_message or '' }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty">Nenhuma mensagem enviada ainda.</div>
+{% endif %}
+
+{% endblock %}

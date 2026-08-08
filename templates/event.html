@@ -36,7 +36,7 @@
   </div>
 
   <div class="panel">
-    <h2 style="margin-top:0">SMS que sairia</h2>
+    <h2 style="margin-top:0">Mensagem</h2>
     {% if e.preview_body %}
       <div class="sms">{{ e.preview_body }}</div>
       <p class="meter">
@@ -45,15 +45,51 @@
         {{ encoding }}
       </p>
     {% else %}
-      <p class="sub">Não foi gerado — veja o motivo acima.</p>
+      <p class="sub">Não foi gerada — veja o motivo acima.</p>
     {% endif %}
+
     {% if e.venue_id %}
-    <form method="post" action="{{ url_for('replay', event_id=e.id) }}">
-      <button class="btn ghost" type="submit">Reprocessar com as regras atuais</button>
-    </form>
+    <div class="row" style="margin-top:14px">
+      <form method="post" action="{{ url_for('replay', event_id=e.id) }}" style="flex:0 0 auto">
+        <button class="btn ghost" type="submit">Reprocessar</button>
+      </form>
+      <form method="post" action="{{ url_for('send_now', event_id=e.id) }}" style="flex:0 0 auto">
+        <button class="btn" type="submit" onclick="return confirm('Enviar este SMS agora?')">
+          {{ 'Reenviar' if deliveries else 'Enviar agora' }}
+        </button>
+      </form>
+    </div>
     {% endif %}
   </div>
 </div>
+
+<h2>Entregas</h2>
+{% if deliveries %}
+<div class="panel">
+  <table>
+    <thead>
+      <tr><th>Quando</th><th>Para</th><th>De</th><th>Status</th>
+          <th>Tentativas</th><th>SID</th><th>Erro</th></tr>
+    </thead>
+    <tbody>
+    {% for d in deliveries %}
+      {% set lbl, dtone = delivery_labels.get(d.status, (d.status, 'hold')) %}
+      <tr>
+        <td>{{ d.updated_at[:16].replace('T', ' ') }}</td>
+        <td>{{ d.to_number }}</td>
+        <td>{{ d.from_number }}</td>
+        <td><span class="state {{ dtone }}">{{ lbl }}</span></td>
+        <td>{{ d.attempts }}</td>
+        <td>{{ d.provider_sid or '—' }}</td>
+        <td>{{ d.error_message or '' }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty">Nenhum envio para esta chamada.</div>
+{% endif %}
 
 <h2>Payload cru</h2>
 <pre>{{ pretty }}</pre>

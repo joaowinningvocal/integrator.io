@@ -5,8 +5,9 @@ Hub de automação de webhook do Winning Vocal.
 Substitui os cenários do Make.com. Cada agente de voz tem sua própria URL de webhook;
 o hub identifica a venue pela URL, resolve o link do pacote e monta o SMS.
 
-**Fase atual: 1 + 2.** Recebe, normaliza, resolve e mostra o preview.
-**Nada é enviado ainda** — a integração com a Twilio entra na Fase 3.
+**Fase atual: 3.** Recebe, normaliza, resolve, monta o SMS e envia pela Twilio,
+com registro de entrega, retry e callback de status.
+O envio só acontece no modo que você escolher no topo do console.
 
 ---
 
@@ -25,6 +26,8 @@ o hub identifica a venue pela URL, resolve o link do pacote e monta o SMS.
    | `SECRET_KEY` | `python -c "import secrets;print(secrets.token_urlsafe(32))"` |
    | `DATA_DIR` | `/data` |
    | `PUBLIC_BASE_URL` | a URL pública do app (preencha depois do primeiro deploy) |
+   | `TWILIO_ACCOUNT_SID` | o Account SID da conta Twilio |
+   | `TWILIO_AUTH_TOKEN` | o Auth Token da mesma conta |
 
 5. *Settings → Networking → Generate Domain*.
 6. Confira `https://SEU-APP.up.railway.app/health` → deve responder
@@ -85,9 +88,35 @@ Status possíveis: `preview_ok`, `duplicate`, `no_link`, `no_phone`,
 
 O interruptor no topo do console controla o comportamento de envio.
 
-- **Simulação** — nada sai. É o modo desta fase.
-- **Teste** — envia só para números da allowlist. (Fase 3)
-- **Ao vivo** — envia para clientes reais. (Fase 4)
+- **Simulação** — nada sai. O hub registra o que enviaria.
+- **Teste** — envia só para os números da allowlist (aba Ajustes).
+  Qualquer outro destino vira `blocked_test` e fica registrado.
+- **Ao vivo** — envia para clientes reais.
+
+## Entregas
+
+Cada envio vira uma linha na tabela `deliveries`, visível na página da chamada
+e em Ajustes. Estados: `queued` → `sent` → `delivered`, ou `failed` /
+`undelivered` quando dá errado.
+
+O hub separa erro **permanente** de **transitório**. STOP do destinatário,
+número fixo, número inválido, filtro da operadora — não adianta repetir, marca
+`failed` direto. Timeout de rede, 429 e 5xx da Twilio viram `retry`, e um worker
+tenta de novo a cada minuto, até 3 tentativas.
+
+Para o status virar **Entregue** em vez de parar em **Saiu da Twilio**, o hub
+precisa do callback. Defina `PUBLIC_BASE_URL` e o próprio hub manda a URL de
+callback junto de cada mensagem — não precisa configurar nada no console da
+Twilio. A URL aparece na aba Ajustes.
+
+## Primeira vez enviando
+
+1. Ajustes → confira que as credenciais da Twilio aparecem como presentes.
+2. Ajustes → ponha **o seu celular** na allowlist.
+3. Topo → modo **Teste**.
+4. Faça uma ligação de teste, ou abra uma chamada antiga e clique **Enviar agora**.
+5. O SMS chega no seu número. Confira o texto, o remetente e o link.
+6. Só então troque para **Ao vivo** e desligue o cenário do Make.
 
 ## Arquivos
 

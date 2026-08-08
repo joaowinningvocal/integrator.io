@@ -30,7 +30,12 @@
         <span class="arrow">→</span>
         <span class="pkg">{{ e.package or 'sem pacote' }}</span>
       </span>
-      <span class="state {{ tone }}">{{ label }}</span>
+      {% if e.delivery_status %}
+        {% set dl, dtone = delivery_labels.get(e.delivery_status, (e.delivery_status, 'hold')) %}
+        <span class="state {{ dtone }}">{{ dl }}</span>
+      {% else %}
+        <span class="state {{ tone }}">{{ label }}</span>
+      {% endif %}
     </a>
   {% endfor %}
 </div>

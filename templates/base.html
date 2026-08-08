@@ -18,6 +18,7 @@
     <nav class="topnav">
       <a href="{{ url_for('events') }}" class="{{ 'on' if request.endpoint in ('events','event_detail') }}">Chamadas</a>
       <a href="{{ url_for('venues') }}" class="{{ 'on' if request.endpoint == 'venues' }}">Venues</a>
+      <a href="{{ url_for('settings') }}" class="{{ 'on' if request.endpoint == 'settings' }}">Ajustes</a>
       <a href="{{ url_for('logout') }}">Sair</a>
     </nav>
     {% endif %}
@@ -30,7 +31,9 @@
     <span class="caption">Modo de envio</span>
     <form method="post" action="{{ url_for('set_mode') }}" class="switch">
       {% for m, lbl in [('dry_run','Simulação'), ('test','Teste'), ('live','Ao vivo')] %}
-        <button name="mode" value="{{ m }}" class="{{ 'on mode-' ~ m if mode == m }}">{{ lbl }}</button>
+        <button name="mode" value="{{ m }}" class="{{ 'on mode-' ~ m if mode == m }}"
+          {% if m == 'live' %}onclick="return confirm('Ao vivo envia SMS para clientes reais. Confirma?')"{% endif %}
+          >{{ lbl }}</button>
       {% endfor %}
     </form>
     <span class="hint">

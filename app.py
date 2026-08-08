@@ -23,6 +23,7 @@ except ImportError:
 
 import db
 import engine
+import sender
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "dev-only-change-me")
@@ -32,6 +33,19 @@ ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD") or os.getenv("HUB_ADMIN_PASSWORD", 
 
 with app.app_context():
     db.init_db()
+
+
+def status_callback_url() -> str:
+    """URL que a Twilio chama quando o status da mensagem muda."""
+    base = os.getenv("PUBLIC_BASE_URL", "").rstrip("/")
+    if not base:
+        return ""
+    with app.app_context():
+        token = db.get_setting("status_callback_token", "")
+    return f"{base}/twilio/status/{token}" if token else ""
+
+
+sender.start_retry_worker(app, status_callback_url)
 
 
 # ---------------------------------------------------------------- auth
@@ -126,12 +140,31 @@ def inbound(slug, token=None):
     status = result["status"]
     note = result.get("note", "")
 
+    send_now = False
     if status == "ready":
-        # Fase 3 pluga o envio aqui. Por ora só registra o preview.
-        status = "preview_ok"
-        note = f"Modo {mode} — nada enviado. SMS pronto, {len(result['sms_body'])} caracteres."
+        if mode == "dry_run":
+            status = "preview_ok"
+            note = f"Simulação — nada enviado. SMS pronto, {len(result['sms_body'])} caracteres."
+        elif mode == "test" and result["customer_phone"] not in db.allowlist():
+            status = "blocked_test"
+            note = f"Modo teste — {result['customer_phone']} não está na allowlist."
+        else:
+            status = "dispatched"
+            note = ""
+            send_now = True
 
     event_id = _record(status, slug, venue, raw, note=note, result=result)
+
+    if send_now:
+        delivery_id = db.create_delivery(
+            event_id, venue["id"], result["customer_phone"],
+            result["sms_from"], result["sms_body"],
+        )
+        sender.dispatch(app, delivery_id, status_callback_url())
+        d = db.get_delivery(delivery_id)
+        return jsonify(ok=True, event=event_id, status=status, mode=mode,
+                       delivery=d["status"], sid=d["provider_sid"]), 200
+
     return jsonify(ok=True, event=event_id, status=status, mode=mode), 200
 
 
@@ -143,6 +176,8 @@ def health():
 # ---------------------------------------------------------------- console
 
 STATUS_LABELS = {
+    "dispatched": ("Despachado", "live"),
+    "blocked_test": ("Bloqueado (teste)", "hold"),
     "preview_ok": ("Pronto pra enviar", "live"),
     "duplicate": ("Duplicado", "hold"),
     "no_link": ("Pacote sem link", "fault"),
@@ -155,12 +190,25 @@ STATUS_LABELS = {
 }
 
 
+DELIVERY_LABELS = {
+    "queued": ("Na fila da Twilio", "hold"),
+    "sending": ("Enviando", "hold"),
+    "sent": ("Saiu da Twilio", "hold"),
+    "delivered": ("Entregue", "live"),
+    "undelivered": ("Não entregue", "fault"),
+    "failed": ("Falhou", "fault"),
+    "retry": ("Vai tentar de novo", "hold"),
+}
+
+
 @app.context_processor
 def inject_globals():
     return {
         "mode": db.get_setting("mode", "dry_run"),
         "status_labels": STATUS_LABELS,
         "venues_nav": db.list_venues(),
+        "delivery_labels": DELIVERY_LABELS,
+        "twilio_ready": sender.configured(),
     }
 
 
@@ -186,6 +234,7 @@ def event_detail(event_id):
     return render_template(
         "event.html", e=row, pretty=db.pretty_json(row["body"]),
         chars=chars, segments=segments, encoding=encoding,
+        deliveries=db.deliveries_for_event(event_id),
     )
 
 
@@ -273,6 +322,74 @@ def set_mode():
         db.set_setting("mode", chosen)
         flash(f"Modo alterado para {chosen}.")
     return redirect(request.referrer or url_for("events"))
+
+
+@app.route("/events/<int:event_id>/send", methods=["POST"])
+@login_required
+def send_now(event_id):
+    """Reenvia (ou envia pela primeira vez) o SMS de um evento já registrado."""
+    row = db.get_event(event_id)
+    if not row or not row["venue_id"]:
+        abort(404)
+    venue = db.get_venue(row["venue_id"])
+    result = engine.process(venue, engine.parse_body(row["body"]))
+
+    if result["status"] != "ready":
+        flash(f"Não dá pra enviar: {result.get('note') or result['status']}")
+        return redirect(url_for("event_detail", event_id=event_id))
+
+    mode = db.get_setting("mode", "dry_run")
+    if mode == "test" and result["customer_phone"] not in db.allowlist():
+        flash(f"Modo teste — {result['customer_phone']} não está na allowlist.")
+        return redirect(url_for("event_detail", event_id=event_id))
+    if mode == "dry_run":
+        flash("Modo simulação — troque para Teste ou Ao vivo para enviar.")
+        return redirect(url_for("event_detail", event_id=event_id))
+
+    delivery_id = db.create_delivery(
+        event_id, venue["id"], result["customer_phone"],
+        result["sms_from"], result["sms_body"],
+    )
+    sender.dispatch(app, delivery_id, status_callback_url())
+    d = db.get_delivery(delivery_id)
+    label = DELIVERY_LABELS.get(d["status"], (d["status"],))[0]
+    flash(f"{label}." + (f" {d['error_message']}" if d["error_message"] else ""))
+    return redirect(url_for("event_detail", event_id=event_id))
+
+
+@app.route("/twilio/status/<token>", methods=["POST"])
+def twilio_status(token):
+    """A Twilio chama aqui quando o status da mensagem muda."""
+    expected = db.get_setting("status_callback_token", "")
+    if not expected or not hmac.compare_digest(token, expected):
+        return ("", 403)
+    sid = request.form.get("MessageSid", "")
+    status = request.form.get("MessageStatus", "")
+    error = request.form.get("ErrorCode", "")
+    d = db.delivery_by_sid(sid) if sid else None
+    if d and status:
+        fields = {"status": status}
+        if error:
+            fields["error_code"] = error
+            fields["error_message"] = sender.FRIENDLY.get(error, f"Twilio código {error}")
+        db.update_delivery(d["id"], **fields)
+    return ("", 204)
+
+
+@app.route("/settings", methods=["GET", "POST"])
+@login_required
+def settings():
+    if request.method == "POST":
+        db.set_setting("test_allowlist", request.form.get("test_allowlist", "").strip())
+        flash("Allowlist salva.")
+        return redirect(url_for("settings"))
+    return render_template(
+        "settings.html",
+        allowlist=db.get_setting("test_allowlist", ""),
+        parsed=sorted(db.allowlist()),
+        callback=status_callback_url(),
+        deliveries=db.list_deliveries(limit=60),
+    )
 
 
 @app.template_filter("shortphone")

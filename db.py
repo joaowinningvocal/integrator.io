@@ -87,6 +87,27 @@ CREATE INDEX IF NOT EXISTS idx_events_received ON events(received_at DESC);
 CREATE INDEX IF NOT EXISTS idx_events_session  ON events(venue_id, call_session_id);
 CREATE INDEX IF NOT EXISTS idx_events_status   ON events(status);
 
+CREATE TABLE IF NOT EXISTS deliveries (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id      INTEGER REFERENCES events(id) ON DELETE SET NULL,
+    venue_id      INTEGER REFERENCES venues(id) ON DELETE SET NULL,
+    created_at    TEXT NOT NULL,
+    updated_at    TEXT NOT NULL,
+    to_number     TEXT NOT NULL,
+    from_number   TEXT NOT NULL,
+    body          TEXT NOT NULL,
+    provider      TEXT NOT NULL DEFAULT 'twilio',
+    provider_sid  TEXT,
+    status        TEXT NOT NULL,
+    error_code    TEXT,
+    error_message TEXT,
+    attempts      INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS idx_deliveries_event ON deliveries(event_id);
+CREATE INDEX IF NOT EXISTS idx_deliveries_sid   ON deliveries(provider_sid);
+CREATE INDEX IF NOT EXISTS idx_deliveries_state ON deliveries(status);
+
 CREATE TABLE IF NOT EXISTS settings (
     key   TEXT PRIMARY KEY,
     value TEXT NOT NULL
@@ -99,6 +120,7 @@ DEFAULT_SETTINGS = {
     # live    -> envia de verdade            (Fase 4)
     "mode": "dry_run",
     "test_allowlist": "",
+    "status_callback_token": "",
 }
 
 # --------------------------------------------------------------------------
@@ -251,6 +273,9 @@ def init_db():
     conn.executescript(SCHEMA)
     for key, value in DEFAULT_SETTINGS.items():
         conn.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", (key, value))
+    row = conn.execute("SELECT value FROM settings WHERE key = 'status_callback_token'").fetchone()
+    if not row or not row["value"]:
+        conn.execute("UPDATE settings SET value = ? WHERE key = 'status_callback_token'", (new_token(),))
 
     for v in SEED_VENUES:
         row = conn.execute("SELECT id FROM venues WHERE slug = ?", (v["slug"],)).fetchone()
@@ -412,8 +437,10 @@ def insert_event(**kw) -> int:
 
 
 def list_events(limit=100, venue_id=None, status=None):
-    sql = ["SELECT e.*, v.name AS venue_name FROM events e "
-           "LEFT JOIN venues v ON v.id = e.venue_id WHERE 1=1"]
+    sql = ["SELECT e.*, v.name AS venue_name, "
+           "(SELECT status FROM deliveries WHERE event_id = e.id ORDER BY id DESC LIMIT 1) "
+           "AS delivery_status "
+           "FROM events e LEFT JOIN venues v ON v.id = e.venue_id WHERE 1=1"]
     args = []
     if venue_id:
         sql.append("AND e.venue_id = ?")
@@ -439,3 +466,83 @@ def event_counts():
         "SELECT status, COUNT(*) AS n FROM events GROUP BY status"
     ).fetchall()
     return {r["status"]: r["n"] for r in rows}
+
+
+# ---------- deliveries ----------
+
+def create_delivery(event_id, venue_id, to_number, from_number, body, status="queued"):
+    db = get_db()
+    ts = now_iso()
+    cur = db.execute(
+        "INSERT INTO deliveries (event_id, venue_id, created_at, updated_at, to_number, "
+        "from_number, body, provider, status, attempts) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, 'twilio', ?, 0)",
+        (event_id, venue_id, ts, ts, to_number, from_number, body, status),
+    )
+    db.commit()
+    return cur.lastrowid
+
+
+def update_delivery(delivery_id, **kw):
+    if not kw:
+        return
+    kw["updated_at"] = now_iso()
+    sets = ", ".join(f"{k} = ?" for k in kw)
+    db = get_db()
+    db.execute(f"UPDATE deliveries SET {sets} WHERE id = ?", [*kw.values(), delivery_id])
+    db.commit()
+
+
+def claim_delivery(delivery_id) -> bool:
+    """Marca como 'sending' só se ainda estiver pendente. Evita dois workers pegarem o mesmo."""
+    db = get_db()
+    cur = db.execute(
+        "UPDATE deliveries SET status = 'sending', attempts = attempts + 1, updated_at = ? "
+        "WHERE id = ? AND status IN ('queued', 'retry')",
+        (now_iso(), delivery_id),
+    )
+    db.commit()
+    return cur.rowcount == 1
+
+
+def deliveries_for_event(event_id):
+    return get_db().execute(
+        "SELECT * FROM deliveries WHERE event_id = ? ORDER BY id DESC", (event_id,)
+    ).fetchall()
+
+
+def latest_delivery(event_id):
+    return get_db().execute(
+        "SELECT * FROM deliveries WHERE event_id = ? ORDER BY id DESC LIMIT 1", (event_id,)
+    ).fetchone()
+
+
+def delivery_by_sid(sid: str):
+    return get_db().execute(
+        "SELECT * FROM deliveries WHERE provider_sid = ?", (sid,)
+    ).fetchone()
+
+
+def get_delivery(delivery_id):
+    return get_db().execute(
+        "SELECT * FROM deliveries WHERE id = ?", (delivery_id,)
+    ).fetchone()
+
+
+def pending_retries(limit=20):
+    return get_db().execute(
+        "SELECT * FROM deliveries WHERE status = 'retry' AND attempts < 3 "
+        "ORDER BY id LIMIT ?", (limit,)
+    ).fetchall()
+
+
+def list_deliveries(limit=100):
+    return get_db().execute(
+        "SELECT d.*, v.name AS venue_name FROM deliveries d "
+        "LEFT JOIN venues v ON v.id = d.venue_id ORDER BY d.id DESC LIMIT ?", (limit,)
+    ).fetchall()
+
+
+def allowlist() -> set:
+    raw = get_setting("test_allowlist", "")
+    return {to_e164(p) for p in re.split(r"[\s,;]+", raw) if to_e164(p)}
