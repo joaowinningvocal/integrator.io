@@ -109,13 +109,22 @@ precisa do callback. Defina `PUBLIC_BASE_URL` e o próprio hub manda a URL de
 callback junto de cada mensagem — não precisa configurar nada no console da
 Twilio. A URL aparece na aba Ajustes.
 
+## Bancada de testes
+
+A aba **Testar** dispara uma mensagem sem precisar de ligação. Escolha a venue,
+o pacote e o nome; o hub monta a mensagem pelo mesmo caminho que uma chamada real
+usaria e mostra a prévia com contagem de caracteres e segmentos.
+
+A bancada **só envia para números da allowlist**, em qualquer modo — inclusive em
+Simulação. É por isso que ela é segura de usar sem virar a chave para Ao vivo.
+
 ## Primeira vez enviando
 
 1. Ajustes → confira que as credenciais da Twilio aparecem como presentes.
 2. Ajustes → ponha **o seu celular** na allowlist.
-3. Topo → modo **Teste**.
-4. Faça uma ligação de teste, ou abra uma chamada antiga e clique **Enviar agora**.
-5. O SMS chega no seu número. Confira o texto, o remetente e o link.
+3. Testar → escolha venue e pacote, clique **Enviar teste**.
+4. O SMS chega no seu número. Confira o texto, o remetente e o link.
+5. Repita para a outra venue e para alguns pacotes diferentes.
 6. Só então troque para **Ao vivo** e desligue o cenário do Make.
 
 ## Arquivos

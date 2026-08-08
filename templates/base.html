@@ -18,6 +18,7 @@
     <nav class="topnav">
       <a href="{{ url_for('events') }}" class="{{ 'on' if request.endpoint in ('events','event_detail') }}">Chamadas</a>
       <a href="{{ url_for('venues') }}" class="{{ 'on' if request.endpoint == 'venues' }}">Venues</a>
+      <a href="{{ url_for('testbench') }}" class="{{ 'on' if request.endpoint == 'testbench' }}">Testar</a>
       <a href="{{ url_for('settings') }}" class="{{ 'on' if request.endpoint == 'settings' }}">Ajustes</a>
       <a href="{{ url_for('logout') }}">Sair</a>
     </nav>
@@ -36,7 +37,7 @@
           >{{ lbl }}</button>
       {% endfor %}
     </form>
-    <span class="hint">
+    <span class="hint-dark">
       {% if mode == 'dry_run' %}Nada é enviado. O hub só registra o que sairia.
       {% elif mode == 'test' %}Envia apenas para números da allowlist.
       {% else %}Enviando para clientes reais.{% endif %}

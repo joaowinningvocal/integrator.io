@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}Testar{% endblock %}
+{% block body %}
+
+<h1>Bancada de testes</h1>
+<p class="sub">Monta a mensagem exatamente como uma ligação real montaria — sem precisar ligar.</p>
+
+{% if not allow %}
+<div class="note">
+  A bancada só envia para números da allowlist, e ela está vazia.
+  <a href="{{ url_for('settings') }}">Adicione o seu número em Ajustes</a> para liberar o envio.
+  A prévia funciona mesmo assim.
+</div>
+{% endif %}
+
+<form method="post">
+  <div class="panel">
+    <div class="panel-head"><h2>Montar a mensagem</h2></div>
+
+    <div class="grid-2">
+      <div class="field">
+        <label for="venue_id">Venue</label>
+        <select id="venue_id" name="venue_id" onchange="fillPackages()">
+          {% for v in venues_all %}
+            <option value="{{ v.id }}" {{ 'selected' if form.venue_id == v.id }}>{{ v.name }}</option>
+          {% endfor %}
+        </select>
+        <p class="hint">Define o template, o remetente e a tabela de pacotes.</p>
+      </div>
+
+      <div class="field">
+        <label for="package">Pacote</label>
+        <select id="package" name="package"></select>
+        <p class="hint">A mesma lista que o agente manda no payload.</p>
+      </div>
+
+      <div class="field">
+        <label for="first_name">Nome do cliente</label>
+        <input type="text" id="first_name" name="first_name" value="{{ form.first_name }}"
+               placeholder="deixe vazio para simular Unknown">
+        <p class="hint">Vazio testa o texto de fallback.</p>
+      </div>
+
+      <div class="field">
+        <label for="to">Enviar para</label>
+        <select id="to" name="to">
+          {% for n in allow %}
+            <option value="{{ n }}" {{ 'selected' if form.to == n }}>{{ n }}</option>
+          {% endfor %}
+          {% if not allow %}<option value="">— allowlist vazia —</option>{% endif %}
+        </select>
+        <p class="hint">Só números da allowlist aparecem aqui.</p>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <button class="btn ghost" name="action" value="preview" type="submit">Ver prévia</button>
+      <button class="btn" name="action" value="send" type="submit"
+              {{ 'disabled' if not allow }}>Enviar teste</button>
+      {% if not twilio_ready %}
+        <span class="hint">Twilio não configurada — só prévia.</span>
+      {% endif %}
+    </div>
+  </div>
+</form>
+
+{% if preview %}
+  {% set r = preview.result %}
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Resultado</h2>
+      {% set lbl, tone = status_labels.get(r.status, ('Pronto pra enviar', 'live')) %}
+      <span class="pill {{ 'live' if r.status == 'ready' else 'fault' }}">
+        {{ 'Pronto pra enviar' if r.status == 'ready' else lbl }}
+      </span>
+    </div>
+
+    {% if r.note and r.status != 'ready' %}<div class="note">{{ r.note }}</div>{% endif %}
+
+    {% if r.sms_body %}
+      <div class="sms">{{ r.sms_body }}</div>
+      {% set chars, segs, enc = r.sms_body | segments %}
+      <p class="meter">
+        de <b>{{ r.sms_from }}</b> para <b>{{ r.customer_phone or '—' }}</b> ·
+        <b>{{ chars }}</b> caracteres ·
+        <b class="{{ 'warn' if segs > 1 }}">{{ segs }}</b> segmento{{ 's' if segs != 1 }} · {{ enc }}
+      </p>
+    {% endif %}
+
+    {% if preview.sent %}
+      {% set lbl, tone = delivery_labels.get(preview.sent.status, (preview.sent.status, 'hold')) %}
+      <p class="meter">Entrega: <span class="pill {{ tone }}">{{ lbl }}</span>
+         {% if preview.sent.provider_sid %}· SID {{ preview.sent.provider_sid }}{% endif %}</p>
+    {% endif %}
+  </div>
+{% endif %}
+
+<script>
+  const PACKAGES = {{ packages | tojson }};
+  const CHOSEN = {{ form.package | tojson }};
+  function fillPackages() {
+    const venue = document.getElementById('venue_id').value;
+    const select = document.getElementById('package');
+    select.innerHTML = '';
+    (PACKAGES[venue] || []).forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.label;
+      opt.textContent = p.price ? `${p.label} — ${p.price}` : p.label;
+      if (p.label === CHOSEN) opt.selected = true;
+      select.appendChild(opt);
+    });
+  }
+  fillPackages();
+</script>
+
+{% endblock %}

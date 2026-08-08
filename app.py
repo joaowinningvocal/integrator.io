@@ -177,6 +177,7 @@ def health():
 
 STATUS_LABELS = {
     "dispatched": ("Despachado", "live"),
+    "test_send": ("Teste manual", "hold"),
     "blocked_test": ("Bloqueado (teste)", "hold"),
     "preview_ok": ("Pronto pra enviar", "live"),
     "duplicate": ("Duplicado", "hold"),
@@ -376,6 +377,73 @@ def twilio_status(token):
     return ("", 204)
 
 
+@app.route("/test", methods=["GET", "POST"])
+@login_required
+def testbench():
+    """
+    Dispara uma mensagem sem precisar de ligação.
+    Só envia para números da allowlist — por isso funciona em qualquer modo.
+    """
+    venues_all = db.list_venues()
+    packages = {v["id"]: [dict(p) for p in db.list_packages(v["id"])] for v in venues_all}
+    allow = sorted(db.allowlist())
+    form = {
+        "venue_id": request.form.get("venue_id", type=int) or (venues_all[0]["id"] if venues_all else None),
+        "package": request.form.get("package", ""),
+        "first_name": request.form.get("first_name", ""),
+        "to": request.form.get("to", ""),
+    }
+    preview = None
+
+    if request.method == "POST" and form["venue_id"]:
+        venue = db.get_venue(form["venue_id"])
+        payload = {
+            "call_session_id": f"testbench-{db.now_iso()}",
+            "phone": form["to"] or (allow[0] if allow else ""),
+            "callee_number": venue["sender_number"] or "",
+            "package": form["package"],
+            "first_name": form["first_name"],
+        }
+        result = engine.process(venue, payload)
+        preview = {"result": result, "sent": None}
+
+        if request.form.get("action") == "send":
+            to = result["customer_phone"]
+            if not allow:
+                flash("Adicione um número na allowlist em Ajustes antes de enviar um teste.")
+            elif to not in allow:
+                flash(f"{to or 'O número informado'} não está na allowlist. A bancada só envia para números dela.")
+            elif result["status"] != "ready":
+                flash(f"Não dá pra enviar: {result.get('note') or result['status']}")
+            elif not sender.configured():
+                flash("Credenciais da Twilio não configuradas. Veja Ajustes.")
+            else:
+                event_id = db.insert_event(
+                    venue_id=venue["id"], slug=venue["slug"], received_at=db.now_iso(),
+                    remote_ip="bancada", content_type="application/json",
+                    headers="{}", body=json.dumps(payload, ensure_ascii=False),
+                    call_session_id=payload["call_session_id"],
+                    customer_phone=to, agent_did=payload["callee_number"],
+                    package=result["package_label"], first_name=result["first_name"],
+                    matched_link=result["link"], preview_body=result["sms_body"],
+                    preview_from=result["sms_from"], status="test_send",
+                    note="Disparado pela bancada de testes",
+                )
+                delivery_id = db.create_delivery(
+                    event_id, venue["id"], to, result["sms_from"], result["sms_body"]
+                )
+                sender.dispatch(app, delivery_id, status_callback_url())
+                d = db.get_delivery(delivery_id)
+                label = DELIVERY_LABELS.get(d["status"], (d["status"],))[0]
+                flash(f"{label}." + (f" {d['error_message']}" if d["error_message"] else ""))
+                preview["sent"] = dict(d)
+
+    return render_template(
+        "testbench.html", venues_all=venues_all, packages=packages,
+        allow=allow, form=form, preview=preview,
+    )
+
+
 @app.route("/settings", methods=["GET", "POST"])
 @login_required
 def settings():
@@ -390,6 +458,11 @@ def settings():
         callback=status_callback_url(),
         deliveries=db.list_deliveries(limit=60),
     )
+
+
+@app.template_filter("segments")
+def segments_filter(body):
+    return db.sms_segments(body or "")
 
 
 @app.template_filter("shortphone")
