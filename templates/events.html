@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Chamadas{% endblock %}
+{% block body %}
+
+<h1>Chamadas recebidas</h1>
+<p class="sub">Cada tira é um POST de um agente. Clique para ver o payload cru e o SMS que sairia.</p>
+
+<div class="filters">
+  <a class="chip {{ 'on' if not active_venue and not active_status }}" href="{{ url_for('events') }}">Tudo</a>
+  {% for v in venues_nav %}
+    <a class="chip {{ 'on' if active_venue == v.id }}" href="{{ url_for('events', venue=v.id) }}">{{ v.name }}</a>
+  {% endfor %}
+  {% for st, n in counts.items() %}
+    <a class="chip {{ 'on' if active_status == st }}" href="{{ url_for('events', status=st) }}">
+      {{ status_labels.get(st, [st])[0] }} <b>{{ n }}</b>
+    </a>
+  {% endfor %}
+</div>
+
+{% if events %}
+<div class="strips">
+  {% for e in events %}
+    {% set label, tone = status_labels.get(e.status, (e.status, 'hold')) %}
+    <a class="strip" href="{{ url_for('event_detail', event_id=e.id) }}">
+      <span class="lamp {{ tone }}"></span>
+      <span class="ts">{{ e.received_at[:16].replace('T', ' ') }}</span>
+      <span class="venue-tag">{{ e.venue_name or e.slug or '—' }}</span>
+      <span class="flow">
+        {{ e.customer_phone or e.first_name or '—' }}
+        <span class="arrow">→</span>
+        <span class="pkg">{{ e.package or 'sem pacote' }}</span>
+      </span>
+      <span class="state {{ tone }}">{{ label }}</span>
+    </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty">
+  Nenhuma chamada ainda. Aponte um agente para a URL da venue e faça uma ligação de teste —
+  ela aparece aqui em segundos.
+</div>
+{% endif %}
+
+{% endblock %}

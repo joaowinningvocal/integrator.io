@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Chamada #{{ e.id }}{% endblock %}
+{% block body %}
+
+{% set label, tone = status_labels.get(e.status, (e.status, 'hold')) %}
+
+<h1>Chamada #{{ e.id }} — {{ label }}</h1>
+<p class="sub">{{ e.venue_name or e.slug }} · {{ e.received_at.replace('T', ' ') }} · de {{ e.remote_ip or '—' }}</p>
+
+{% if e.note %}<div class="note">{{ e.note }}</div>{% endif %}
+
+{% set r = session.pop('replay', None) %}
+{% if r and r.event_id == e.id %}
+<div class="panel">
+  <h2 style="margin-top:0">Reprocessado agora</h2>
+  <p class="meter">Resultado: <b>{{ status_labels.get(r.status, [r.status])[0] }}</b>
+     {% if r.to %}· para <b>{{ r.to }}</b>{% endif %}</p>
+  {% if r.note %}<div class="note">{{ r.note }}</div>{% endif %}
+  {% if r.sms_body %}<div class="sms">{{ r.sms_body }}</div>{% endif %}
+</div>
+{% endif %}
+
+<div class="cols">
+  <div class="panel">
+    <h2 style="margin-top:0">Campos lidos</h2>
+    <dl class="kv">
+      <dt>Sessão</dt><dd>{{ e.call_session_id or '—' }}</dd>
+      <dt>Cliente</dt><dd>{{ e.customer_phone or '—' }}</dd>
+      <dt>Nome</dt><dd>{{ e.first_name or '(não capturado)' }}</dd>
+      <dt>Número discado</dt><dd>{{ e.agent_did or '—' }}</dd>
+      <dt>Pacote</dt><dd>{{ e.package or '—' }}</dd>
+      <dt>Link resolvido</dt>
+      <dd>{% if e.matched_link %}<a href="{{ e.matched_link }}">{{ e.matched_link }}</a>{% else %}—{% endif %}</dd>
+      <dt>Remetente</dt><dd>{{ e.preview_from or '—' }}</dd>
+    </dl>
+  </div>
+
+  <div class="panel">
+    <h2 style="margin-top:0">SMS que sairia</h2>
+    {% if e.preview_body %}
+      <div class="sms">{{ e.preview_body }}</div>
+      <p class="meter">
+        <b>{{ chars }}</b> caracteres ·
+        <b class="{{ 'warn' if segments > 2 }}">{{ segments }}</b> segmento{{ 's' if segments != 1 }} ·
+        {{ encoding }}
+      </p>
+    {% else %}
+      <p class="sub">Não foi gerado — veja o motivo acima.</p>
+    {% endif %}
+    {% if e.venue_id %}
+    <form method="post" action="{{ url_for('replay', event_id=e.id) }}">
+      <button class="btn ghost" type="submit">Reprocessar com as regras atuais</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<h2>Payload cru</h2>
+<pre>{{ pretty }}</pre>
+
+{% endblock %}

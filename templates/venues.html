@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}Venues{% endblock %}
+{% block body %}
+
+<h1>Venues</h1>
+<p class="sub">Cada venue tem sua própria URL de webhook. É ela que identifica de quem veio a chamada.</p>
+
+{% for row in rows %}
+  {% set v = row.v %}
+  <div class="panel">
+    <h2 style="margin-top:0">{{ v.name }} <span style="color:var(--rule)">/{{ v.slug }}</span></h2>
+
+    <label>URL para colar no agente do Agni</label>
+    <div class="url-box">{{ row.url }}</div>
+
+    <form method="post" action="{{ url_for('save_venue', venue_id=v.id) }}">
+      <div class="row">
+        <div>
+          <label for="name-{{ v.id }}">Nome</label>
+          <input type="text" id="name-{{ v.id }}" name="name" value="{{ v.name }}">
+        </div>
+        <div>
+          <label for="from-{{ v.id }}">Número remetente</label>
+          <input type="text" id="from-{{ v.id }}" name="sender_number" value="{{ v.sender_number or '' }}">
+        </div>
+        <div class="narrow">
+          <label for="active-{{ v.id }}">Ativa</label>
+          <select id="active-{{ v.id }}" name="active">
+            <option value="1" {{ 'selected' if v.active }}>Sim</option>
+            <option value="" {{ 'selected' if not v.active }}>Não</option>
+          </select>
+        </div>
+      </div>
+
+      <label class="raw" for="tpl-{{ v.id }}">Template do SMS — use {{ '{{first_name|there}}' }}, {{ '{{link}}' }}, {{ '{{package}}' }}</label>
+      <textarea id="tpl-{{ v.id }}" name="template" rows="9">{{ row.template.body if row.template else '' }}</textarea>
+
+      <p></p>
+      <button class="btn" type="submit">Salvar venue</button>
+    </form>
+
+    <form method="post" action="{{ url_for('rotate', venue_id=v.id) }}" style="margin-top:8px">
+      <button class="btn ghost" type="submit">Gerar token novo</button>
+    </form>
+
+    <h2>Pacotes e links</h2>
+    <table>
+      <thead><tr><th>Pacote</th><th>Preço</th><th>Link</th><th></th></tr></thead>
+      <tbody>
+      {% for p in row.packages %}
+        <tr>
+          <td>{{ p.label }}<br><span style="color:var(--muted)">{{ p.norm_key }}</span></td>
+          <td>{{ p.price }}</td>
+          <td class="link"><a href="{{ p.link }}">{{ p.link }}</a></td>
+          <td>
+            <form method="post" action="{{ url_for('save_packages', venue_id=v.id) }}">
+              <button class="btn ghost" name="delete" value="{{ p.id }}" type="submit">Remover</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+
+    <form method="post" action="{{ url_for('save_packages', venue_id=v.id) }}">
+      <div class="row">
+        <div>
+          <label for="lbl-{{ v.id }}">Novo pacote</label>
+          <input type="text" id="lbl-{{ v.id }}" name="label" placeholder="Nome exato que o agente manda">
+        </div>
+        <div class="narrow">
+          <label for="pr-{{ v.id }}">Preço</label>
+          <input type="text" id="pr-{{ v.id }}" name="price" placeholder="$0">
+        </div>
+        <div>
+          <label for="lk-{{ v.id }}">Link</label>
+          <input type="text" id="lk-{{ v.id }}" name="link" placeholder="https://app.cartvip.com/…">
+        </div>
+        <button class="btn" type="submit">Adicionar</button>
+      </div>
+    </form>
+  </div>
+{% endfor %}
+
+{% endblock %}

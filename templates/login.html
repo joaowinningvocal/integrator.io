@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Entrar{% endblock %}
+{% block body %}
+<div class="login-wrap">
+  <h1>Entrar</h1>
+  <p class="sub">integrator.io — roteamento dos agentes de voz do Winning Vocal.</p>
+  {% if error %}<div class="note">{{ error }}</div>{% endif %}
+  <form method="post" class="panel">
+    <label for="password">Senha</label>
+    <input type="password" id="password" name="password" autofocus autocomplete="current-password">
+    <p></p>
+    <button class="btn" type="submit">Entrar</button>
+  </form>
+</div>
+{% endblock %}

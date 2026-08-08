@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}integrator.io{% endblock %} · Winning Vocal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='console.css') }}">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="{{ url_for('events') }}">integrator<span>.io</span></a>
+    {% if session.authed %}
+    <nav class="topnav">
+      <a href="{{ url_for('events') }}" class="{{ 'on' if request.endpoint in ('events','event_detail') }}">Chamadas</a>
+      <a href="{{ url_for('venues') }}" class="{{ 'on' if request.endpoint == 'venues' }}">Venues</a>
+      <a href="{{ url_for('logout') }}">Sair</a>
+    </nav>
+    {% endif %}
+  </div>
+</header>
+
+{% if session.authed %}
+<div class="modebar">
+  <div class="modebar-inner">
+    <span class="caption">Modo de envio</span>
+    <form method="post" action="{{ url_for('set_mode') }}" class="switch">
+      {% for m, lbl in [('dry_run','Simulação'), ('test','Teste'), ('live','Ao vivo')] %}
+        <button name="mode" value="{{ m }}" class="{{ 'on mode-' ~ m if mode == m }}">{{ lbl }}</button>
+      {% endfor %}
+    </form>
+    <span class="hint">
+      {% if mode == 'dry_run' %}Nada é enviado. O hub só registra o que sairia.
+      {% elif mode == 'test' %}Envia apenas para números da allowlist.
+      {% else %}Enviando para clientes reais.{% endif %}
+    </span>
+  </div>
+</div>
+{% endif %}
+
+<main class="wrap">
+  {% with msgs = get_flashed_messages() %}
+    {% for m in msgs %}<div class="flash">{{ m }}</div>{% endfor %}
+  {% endwith %}
+  {% block body %}{% endblock %}
+</main>
+
+</body>
+</html>
