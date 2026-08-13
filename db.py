@@ -371,10 +371,49 @@ def close_db(_exc=None):
         conn.close()
 
 
+# Colunas adicionadas depois do primeiro deploy. CREATE TABLE IF NOT EXISTS não
+# altera tabela existente, então bancos antigos precisam de ALTER TABLE.
+MIGRATIONS = {
+    "templates": [
+        ("subject",   "TEXT NOT NULL DEFAULT ''"),
+        ("recipient", "TEXT NOT NULL DEFAULT ''"),
+    ],
+    "deliveries": [
+        ("channel",   "TEXT NOT NULL DEFAULT 'sms'"),
+        ("rule_name", "TEXT"),
+        ("subject",   "TEXT"),
+    ],
+    "events": [
+        ("matched_link", "TEXT"),
+        ("preview_body", "TEXT"),
+        ("preview_from", "TEXT"),
+    ],
+    "rules": [
+        ("stop_after", "INTEGER NOT NULL DEFAULT 1"),
+    ],
+}
+
+
+def migrate(conn):
+    """Adiciona colunas que faltam. Seguro de rodar em todo boot."""
+    for table, columns in MIGRATIONS.items():
+        exists = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?", (table,)
+        ).fetchone()
+        if not exists:
+            continue
+        present = {row["name"] for row in conn.execute(f"PRAGMA table_info({table})")}
+        for name, spec in columns:
+            if name not in present:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {spec}")
+    conn.commit()
+
+
 def init_db():
     conn = sqlite3.connect(DB_PATH, timeout=15)
     conn.row_factory = sqlite3.Row
     conn.executescript(SCHEMA)
+    migrate(conn)
     for key, value in DEFAULT_SETTINGS.items():
         conn.execute("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)", (key, value))
     row = conn.execute("SELECT value FROM settings WHERE key = 'status_callback_token'").fetchone()

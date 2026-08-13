@@ -208,6 +208,16 @@ Simulação. É por isso que ela é segura de usar sem virar a chave para Ao viv
 5. Repita para a outra venue e para alguns pacotes diferentes.
 6. Só então troque para **Ao vivo** e desligue o cenário do Make.
 
+## Migrações
+
+`init_db()` roda em todo boot: cria o que falta e adiciona colunas novas em
+tabelas que já existem. É idempotente — rodar várias vezes não causa problema.
+
+Isso importa porque o volume do Railway preserva o banco entre deploys, e
+`CREATE TABLE IF NOT EXISTS` **não** altera uma tabela existente. Ao adicionar
+uma coluna ao `SCHEMA`, adicione-a também ao dicionário `MIGRATIONS` no `db.py`,
+senão o app sobe em banco novo e quebra em banco antigo.
+
 ## Arquivos
 
 | Arquivo | Papel |
