@@ -211,18 +211,171 @@ Recording:
 # Venues sem tabela de pacotes ainda. Criadas desligadas: o webhook responde 403
 # e registra, mas não envia, até você cadastrar pacotes e ligar.
 PENDING_VENUES = [
-    ("dejavu-ypsilanti", "Deja Vu Showgirls Ypsilanti", "+17348965038"),
-    ("dejavu-stockton",  "Deja Vu Stockton",            "+19163504781"),
-    ("dejavu-kalamazoo", "Deja Vu Kalamazoo",           "+12697754582"),
-    ("cats-meow",        "Cats Meow Karaoke",           "+15046819283"),
-    ("barely-legal-nola","Barely Legal New Orleans",    "+15044746323"),
-    ("hustler-nola",     "Hustler New Orleans",         "+15045141440"),
 ]
 
 # Slugs que não devem existir. Removidos no boot se não tiverem histórico.
 RETIRED_SLUGS = ("gobest", "james-wv")
 
+YPSILANTI_TEMPLATE = """Hey there, {{first_name|there}}
+This is the link for you to book your reservation:
+{{link}}
+This SMS was sent by Heather, Deja Vu's Concierge.
+Deja Vu Showgirls
+(734) 557-8812
+dejavuypsilanti.com"""
+
+STOCKTON_TEMPLATE = """Hey there, {{first_name|there}}
+
+This is the link for you to book your reservation:
+{{link}}
+
+This SMS was sent by Heather, Deja Vu's Concierge.
+
+Deja Vu Showgirls Stockton
+(209) 462-7800
+dejavustockton.com"""
+
+KALAMAZOO_TEMPLATE = """Hey there!
+
+This is the link for you to book your package:
+
+{{link}}
+
+Jade from Deja Vu"""
+
+CATS_MEOW_TEMPLATE = """Hey there, {{first_name|there}}
+
+This is the link for you to book your reservation:
+{{link}}
+
+This SMS was sent by Heather, Cats Meow's Concierge.
+
+Cats Meow Karaoke Bar
+catskaraoke.com"""
+
+BARELY_LEGAL_TEMPLATE = """Hey there, {{first_name|there}}
+
+This is the link for you to book your reservation:
+{{link}}
+
+This SMS was sent by Heather, Barely Legal's Concierge.
+
+Barely Legal NOLA
+844-571-6340
+https://barelylegalnola.com"""
+
+HUSTLER_NOLA_TEMPLATE = """Hey there, {{first_name|there}}
+
+This is the link for you to book your reservation:
+{{link}}
+
+This SMS was sent by Heather, Hustler's Concierge.
+
+Larry Flynt's Hustler Club
+504-524-0010
+neworleanshustlerclub.com"""
+
 SEED_VENUES = [
+    {
+        "slug": "cats-meow",
+        "name": "Cats Meow Karaoke",
+        "sender_number": "+15046819283",
+        "template": CATS_MEOW_TEMPLATE,
+        # Os rótulos são os valores exatos que os filtros do Make usam, porque é
+        # isso que a IA manda no campo package. Os links vêm da lista do CartVIP.
+        "packages": [
+            ("Cut the Karaoke Line", "", "https://app.cartvip.com/cats-nola/package/cut-the-karaoke-line-71/checkout"),
+            ("Swingin' Cat's Package", "", "https://app.cartvip.com/cats-nola/package/swingin-cats-72/checkout"),
+            ("Tom Cats Bachelor Party Package", "", "https://app.cartvip.com/cats-nola/package/tom-cats-bachelor-party-74/checkout"),
+            ("Frisky Felines Bachelorette Party Package", "", "https://app.cartvip.com/cats-nola/package/frisky-felines-bachelorette-75/checkout"),
+            ("Cool Cats Party Package (Sun - Thurs)", "", "https://app.cartvip.com/cats-nola/package/cool-cats-balcony-bar-76/checkout"),
+            ("Wild Cats Weekend (Fri-Sat)", "", "https://app.cartvip.com/cats-nola/package/wild-cats-balcony-bar-77/checkout"),
+            ("Top Cats Party Package (Sun - Thurs)", "", "https://app.cartvip.com/cats-nola/package/top-cats-balcony-bar-73/checkout"),
+            ("Purrfect-Kitty Party Package (Fri - Sat)", "", "https://app.cartvip.com/cats-nola/package/purr-fect-kitty-balcony-bar-78/checkout"),
+            ("Spicy Cats Soiree (Sun-Thurs)", "", "https://app.cartvip.com/cats-nola/package/spicy-cats-soiree-full-club-79/checkout"),
+            ("Mind-Blowing Pussy Cat Party (Fri-Sat)", "", "https://app.cartvip.com/cats-nola/package/mind-blowing-pussy-cat-full-club-80/checkout"),
+        ],
+    },
+    {
+        "slug": "barely-legal-nola",
+        "name": "Barely Legal New Orleans",
+        "sender_number": "+15044746323",
+        "template": BARELY_LEGAL_TEMPLATE,
+        "packages": [
+            ("VIP One Time Admission", "", "https://app.cartvip.com/barely-legal-new-orleans/package/vip-one-time-admission-66/checkout"),
+            ("Entry, Dance & Drink SPECIAL", "", "https://app.cartvip.com/barely-legal-new-orleans/package/entry-drink-couch-dance-67/checkout"),
+            ("Couples Package", "", "https://app.cartvip.com/barely-legal-new-orleans/package/couples-package-58/checkout"),
+            ("Silver Party", "", "https://app.cartvip.com/barely-legal-new-orleans/package/silver-party-59/checkout"),
+            ("Dance Party", "", "https://app.cartvip.com/barely-legal-new-orleans/package/dance-party-60/checkout"),
+            ("Gold Party", "", "https://app.cartvip.com/barely-legal-new-orleans/package/gold-party-61/checkout"),
+            ("Wild Party", "", "https://app.cartvip.com/barely-legal-new-orleans/package/wild-party-62/checkout"),
+            ("Platinum Party", "", "https://app.cartvip.com/barely-legal-new-orleans/package/platinum-party-63/checkout"),
+            ("Executive Party", "", "https://app.cartvip.com/barely-legal-new-orleans/package/the-executive-64/checkout"),
+            ("Royal Party", "", "https://app.cartvip.com/barely-legal-new-orleans/package/the-royal-65/checkout"),
+            ("Booth & Bar Reservation (up to 5 guests)", "$300", "https://app.cartvip.com/barely-legal-new-orleans/package/booth-bar-300-68/checkout"),
+            ("Booth & Bar Reservation (up to 10 guests)", "$550", "https://app.cartvip.com/barely-legal-new-orleans/package/booth-bar-550-69/checkout"),
+            ("Booth & Bar Reservation (up to 15 guests)", "$800", "https://app.cartvip.com/barely-legal-new-orleans/package/booth-bar-800-70/checkout"),
+        ],
+    },
+    {
+        "slug": "hustler-nola",
+        "name": "Hustler Club New Orleans",
+        "sender_number": "+15045141440",
+        "template": HUSTLER_NOLA_TEMPLATE,
+        "packages": [
+            ("VIP One Time Admission", "", "https://app.cartvip.com/hustler-club-new-orleans/package/vip-one-time-admission-81/checkout"),
+            ("Entry, Drink & Lap Dance SPECIAL", "", "https://app.cartvip.com/hustler-club-new-orleans/package/entry-drink-couch-dance-83/checkout"),
+            ("Couples Package", "", "https://app.cartvip.com/hustler-club-new-orleans/package/couples-package-82/checkout"),
+            # Existe na lista do CartVIP, mas não tinha rota no Make.
+            ("Silver Party", "", "https://app.cartvip.com/hustler-club-new-orleans/package/silver-party-84/checkout"),
+            ("The Wild Party", "", "https://app.cartvip.com/hustler-club-new-orleans/package/the-wild-party-87/checkout"),
+            ("Gold Party", "", "https://app.cartvip.com/hustler-club-new-orleans/package/gold-party-85/checkout"),
+            ("Platinum Party", "", "https://app.cartvip.com/hustler-club-new-orleans/package/platinum-party-86/checkout"),
+            ("The Wildest Party", "", "https://app.cartvip.com/hustler-club-new-orleans/package/the-wildest-party-88/checkout"),
+            ("The Executive Party", "", "https://app.cartvip.com/hustler-club-new-orleans/package/the-executive-party-89/checkout"),
+            ("The Royal Party", "", "https://app.cartvip.com/hustler-club-new-orleans/package/the-royal-party-90/checkout"),
+        ],
+    },
+    {
+        "slug": "dejavu-kalamazoo",
+        "name": "Deja Vu Showgirls Kalamazoo",
+        "sender_number": "+12697754582",
+        "template": KALAMAZOO_TEMPLATE,
+        "packages": [
+            ("18th Birthday", "", "https://vip-packages.com/products/deja-vu-showgirls-kalamazoo-18th-birthday"),
+            ("Couples Package", "", "https://vip-packages.com/products/deja-vu-showgirls-kalamazoo-couples-package-1"),
+            ("Group of 8", "", "https://vip-packages.com/products/deja-vu-showgirls-kalamazoo-groups-of-8-vip-package"),
+            ("Group of 10", "", "https://vip-packages.com/products/deja-vu-showgirls-kalamazoo-groups-of-10-vip-package"),
+        ],
+    },
+    {
+        "slug": "dejavu-stockton",
+        "name": "Deja Vu Showgirls Stockton",
+        "sender_number": "+19163504781",
+        "template": STOCKTON_TEMPLATE,
+        "packages": [
+            ("VIP One Time Admission", "", "https://vip-packages.com/products/deja-vu-showgirls-stockton-vip-one-time-admission"),
+            ("Couples Package", "", "https://vip-packages.com/products/deja-vu-showgirls-stockton-couples-package"),
+            # No Make esta rota apontava para o link do Couples Package.
+            ("Silver VIP Party", "", "https://vip-packages.com/products/deja-vu-showgirls-stockton-silver-vip-party"),
+            ("Gold VIP Party", "", "https://vip-packages.com/products/deja-vu-showgirls-stockton-gold-vip-party"),
+            ("Platinum VIP Party", "", "https://vip-packages.com/products/deja-vu-showgirls-stockton-platinum-vip-party"),
+            ("VIP Baller Package", "", "https://vip-packages.com/products/deja-vu-showgirls-stockton-vip-baller-package"),
+        ],
+    },
+    {
+        "slug": "dejavu-ypsilanti",
+        "name": "Deja Vu Showgirls Ypsilanti",
+        "sender_number": "+17348965038",
+        "template": YPSILANTI_TEMPLATE,
+        "packages": [
+            ("VIP One Time Admission", "", "https://vip-packages.com/products/deja-vu-showgirls-ypsilanti-vip-one-time-admission"),
+            ("Couples Package", "", "https://vip-packages.com/products/deja-vu-showgirls-ypsilanti-couples-package"),
+            ("Silver VIP", "", "https://vip-packages.com/products/deja-vu-showgirls-ypsilanti-silver-vip-party"),
+            ("Gold VIP", "", "https://vip-packages.com/products/deja-vu-showgirls-ypsilanti-gold-vip-party"),
+            ("Platinum VIP", "", "https://vip-packages.com/products/deja-vu-showgirls-ypsilanti-platinum-vip-party"),
+        ],
+    },
     {
         "slug": "hustler-lv",
         "name": "Hustler Club Las Vegas",

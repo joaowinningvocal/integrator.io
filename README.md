@@ -208,6 +208,21 @@ Simulação. É por isso que ela é segura de usar sem virar a chave para Ao viv
 5. Repita para a outra venue e para alguns pacotes diferentes.
 6. Só então troque para **Ao vivo** e desligue o cenário do Make.
 
+## Migrar uma venue do Make
+
+Exporte o cenário: abra no Make, menu **⋯** na barra inferior, **Export Blueprint**.
+Depois:
+
+```bash
+python3 tools/from_make.py blueprint.json --slug dejavu-stockton --name "Deja Vu Stockton"
+```
+
+Ele imprime o bloco pronto para colar em `SEED_VENUES` no `db.py`, e audita o
+cenário no stderr antes: rotas apontando para o mesmo link, rodapés que
+divergiram entre as rotas, remetentes diferentes na mesma venue. São os erros que
+se acumulam quando cada rota é um módulo editado à mão — vale ler o aviso antes
+de colar.
+
 ## Migrações
 
 `init_db()` roda em todo boot: cria o que falta e adiciona colunas novas em
