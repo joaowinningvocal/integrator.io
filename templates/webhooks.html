@@ -6,14 +6,35 @@
 <p class="sub">Uma URL por agente. Cole cada uma na ação de chamar webhook do agente
    correspondente no Agni. O token está na própria URL — trate como senha.</p>
 
+{% set pinned = rows | selectattr('v.pinned') | list %}
+{% set normal = rows | rejectattr('v.pinned') | list %}
+
+{% for r in pinned %}
+<div class="panel pinned-panel">
+  <div class="panel-head">
+    <h2>{{ r.v.name }}</h2>
+    <span class="pill fault">Universal</span>
+    {% if r.v.always_live %}<span class="pill fault">Sempre ao vivo</span>{% endif %}
+  </div>
+  <p class="meter" style="margin-bottom:12px">
+    Um webhook só, para todos os agentes. Ignora o modo do console — um alerta
+    nunca é engolido por estar em Simulação ou Teste.
+  </p>
+  <div class="hook-url">
+    <code id="p{{ r.v.id }}">{{ r.url }}</code>
+    <button class="btn ghost" type="button" onclick="copyOne('p{{ r.v.id }}', this)">Copiar</button>
+  </div>
+</div>
+{% endfor %}
+
 <div class="panel">
   <div class="panel-head">
-    <h2>Todas as URLs</h2>
+    <h2>Por venue</h2>
     <button class="btn ghost" type="button" onclick="copyAll(this)">Copiar tudo</button>
   </div>
 
   <div class="hooks">
-    {% for r in rows %}
+    {% for r in normal %}
       <div class="hook">
         <div class="hook-head">
           <span class="dot {{ 'on' if r.v.active }}"></span>

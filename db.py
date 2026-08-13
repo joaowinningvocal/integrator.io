@@ -41,6 +41,8 @@ CREATE TABLE IF NOT EXISTS venues (
     token         TEXT NOT NULL,
     sender_number TEXT,
     active        INTEGER NOT NULL DEFAULT 1,
+    pinned        INTEGER NOT NULL DEFAULT 0,
+    always_live   INTEGER NOT NULL DEFAULT 0,
     created_at    TEXT NOT NULL
 );
 
@@ -275,7 +277,38 @@ Larry Flynt's Hustler Club
 504-524-0010
 neworleanshustlerclub.com"""
 
+EMERGENCY_DISPATCH = """POSSIBLE EMERGENCY AT {{club_name}}
+
+The AI detected the following incident:
+{{report}}
+Caller ID: {{phone}}"""
+
+EMERGENCY_JASON = """Jason, POSSIBLE EMERGENCY AT {{club_name}}
+
+The AI detected the following incident:
+{{report}}"""
+
 SEED_VENUES = [
+    {
+        "slug": "emergency",
+        "name": "Emergência (todas as venues)",
+        "sender_number": "+17029970961",
+        "template": None,
+        "packages": [],
+        "pinned": 1,
+        # Ignora o modo do console: um alerta de emergência nunca deve ser
+        # engolido porque alguém deixou o hub em Simulação.
+        "always_live": 1,
+        "templates": [
+            ("emergency_dispatch", "", "+17755135260", EMERGENCY_DISPATCH),
+            ("emergency_jason", "", "+13109307413", EMERGENCY_JASON),
+        ],
+        "rules": [
+            # stop_after = 0 na primeira: o alerta vai para os dois plantões.
+            ("Alerta — plantão", 10, [], 1, "sms", "emergency_dispatch", 0),
+            ("Alerta — Jason", 20, [], 1, "sms", "emergency_jason", 1),
+        ],
+    },
     {
         "slug": "cats-meow",
         "name": "Cats Meow Karaoke",
@@ -544,6 +577,10 @@ MIGRATIONS = {
     "rules": [
         ("stop_after", "INTEGER NOT NULL DEFAULT 1"),
     ],
+    "venues": [
+        ("pinned",      "INTEGER NOT NULL DEFAULT 0"),
+        ("always_live", "INTEGER NOT NULL DEFAULT 0"),
+    ],
 }
 
 
@@ -597,9 +634,10 @@ def init_db():
             venue_id = row["id"]
         else:
             cur = conn.execute(
-                "INSERT INTO venues (slug, name, token, sender_number, active, created_at) "
-                "VALUES (?, ?, ?, ?, 1, ?)",
-                (v["slug"], v["name"], new_token(), v["sender_number"], now_iso()),
+                "INSERT INTO venues (slug, name, token, sender_number, active, "
+                "pinned, always_live, created_at) VALUES (?, ?, ?, ?, 1, ?, ?, ?)",
+                (v["slug"], v["name"], new_token(), v["sender_number"],
+                 v.get("pinned", 0), v.get("always_live", 0), now_iso()),
             )
             venue_id = cur.lastrowid
         if v.get("template"):
@@ -664,7 +702,9 @@ def set_setting(key: str, value: str):
 # ---------- venues ----------
 
 def list_venues():
-    return get_db().execute("SELECT * FROM venues ORDER BY name").fetchall()
+    return get_db().execute(
+        "SELECT * FROM venues ORDER BY pinned DESC, name"
+    ).fetchall()
 
 
 def get_venue_by_slug(slug: str):
@@ -681,6 +721,12 @@ def update_venue(venue_id: int, name: str, sender_number: str, active: int):
         "UPDATE venues SET name = ?, sender_number = ?, active = ? WHERE id = ?",
         (name, sender_number, active, venue_id),
     )
+    db.commit()
+
+
+def set_always_live(venue_id: int, value: int):
+    db = get_db()
+    db.execute("UPDATE venues SET always_live = ? WHERE id = ?", (int(value), venue_id))
     db.commit()
 
 

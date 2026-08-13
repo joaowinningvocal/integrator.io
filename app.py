@@ -188,6 +188,8 @@ def inbound(slug, token=None):
     note = result.get("note", "")
 
     send_now = False
+    if venue["always_live"]:
+        mode = "live"
     if status == "ready":
         channel = result["channel"]
         if mode == "dry_run":
@@ -210,6 +212,7 @@ def inbound(slug, token=None):
             if r["status"] != "ready":
                 continue
             if (mode == "test" and r["channel"] == "sms"
+                    and not venue["always_live"]
                     and r["customer_phone"] not in db.allowlist()):
                 continue
             d = db.get_delivery(_create_and_send(event_id, venue, r))

@@ -284,7 +284,16 @@ def _apply_rule(venue, flat: dict, rule) -> dict:
 
     if rule["channel"] == "sms":
         result["sms_body"] = result["body"]
-        if not fields["customer_phone"]:
+
+        # Destinatário fixo no template tem precedência sobre o telefone do
+        # payload. É o que permite alertas internos (emergência) usarem o mesmo
+        # motor das mensagens para cliente.
+        fixed = db.to_e164(result["recipient"]) if result["recipient"] else ""
+        if fixed:
+            result["customer_phone"] = fixed
+            result["recipient_source"] = "template"
+
+        if not result["customer_phone"]:
             result["status"] = "no_phone"
             result["note"] = (f"Telefone do cliente ausente ou inválido: "
                               f"{fields['customer_phone_raw'] or '(vazio)'}")

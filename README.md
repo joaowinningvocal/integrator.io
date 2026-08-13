@@ -106,6 +106,21 @@ log geral para o admin.
 O endereço do admin é o **destinatário padrão** em Ajustes — mude ali, não no
 template.
 
+### Emergência
+
+A venue **Emergência (todas as venues)** é universal: um webhook só, usado por
+qualquer agente que detecte um incidente. O payload traz `club_name`, `report` e
+`phone`, e o alerta vai para dois plantões fixos, do número do Hustler LV.
+
+Duas particularidades:
+
+- Os destinatários são **fixos no template**, não vêm do payload. Em SMS, um
+  campo Destinatário preenchido tem precedência sobre o telefone do payload.
+- A venue é **sempre ao vivo**: ignora o modo do console. Um alerta de emergência
+  nunca deve ser engolido porque alguém deixou o hub em Simulação ou Teste.
+
+A primeira regra tem **parar aqui** desligado, para o alerta chegar aos dois.
+
 ## Canais
 
 - **SMS** — Twilio. Vai para o telefone do cliente, do número da venue.

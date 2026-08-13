@@ -709,3 +709,9 @@ td .sub-key { color: var(--muted); font-size: 11px; }
   .hook-url { flex-direction: column; }
   .hook-url .btn { width: 100%; }
 }
+
+.pinned-panel {
+  border-color: var(--fault);
+  border-left: 3px solid var(--fault);
+  border-radius: 0 var(--r) var(--r) 0;
+}
