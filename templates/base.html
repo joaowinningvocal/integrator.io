@@ -13,11 +13,14 @@
 
 <header class="topbar">
   <div class="topbar-inner">
-    <a class="brand" href="{{ url_for('events') }}">integrator<span>.io</span></a>
+    <a class="brand" href="{{ url_for('home') }}">integrator<span>.io</span></a>
     {% if session.authed %}
     <nav class="topnav">
+      <a href="{{ url_for('home') }}" class="{{ 'on' if request.endpoint == 'home' }}">Automações</a>
       <a href="{{ url_for('events') }}" class="{{ 'on' if request.endpoint in ('events','event_detail') }}">Chamadas</a>
+      <a href="{{ url_for('rules') }}" class="{{ 'on' if request.endpoint == 'rules' }}">Regras</a>
       <a href="{{ url_for('venues') }}" class="{{ 'on' if request.endpoint == 'venues' }}">Venues</a>
+      <a href="{{ url_for('webhooks') }}" class="{{ 'on' if request.endpoint == 'webhooks' }}">Webhooks</a>
       <a href="{{ url_for('testbench') }}" class="{{ 'on' if request.endpoint == 'testbench' }}">Testar</a>
       <a href="{{ url_for('settings') }}" class="{{ 'on' if request.endpoint == 'settings' }}">Ajustes</a>
       <a href="{{ url_for('logout') }}">Sair</a>

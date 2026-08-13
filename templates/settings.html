@@ -22,11 +22,37 @@
   {% if callback %}
     <div class="url-box">{{ callback }}</div>
     <p class="meter">O hub já manda essa URL em cada envio. É o que faz o status virar
-       <b>Entregue</b> em vez de parar em <b>Saiu da Twilio</b>.</p>
+       <b>Entregue</b> em vez de parar em <b>Saiu da Twilio</b>. Confira que ela começa
+       com <b>https://</b> — sem o esquema a Twilio recusa a mensagem inteira.</p>
   {% else %}
     <div class="note">Defina <code>PUBLIC_BASE_URL</code> no Railway para ativar o callback.
       Sem ele o hub sabe que a mensagem saiu, mas não se chegou.</div>
   {% endif %}
+</div>
+
+<div class="panel">
+  <h2 style="margin-top:0">Notificação por e-mail</h2>
+  {% if smtp_ready %}
+    <p class="meter"><b style="color:var(--live)">SMTP configurado.</b>
+       Enviando de <b>{{ smtp_from }}</b>.</p>
+  {% else %}
+    <div class="note">
+      <code>SMTP_USER</code> e <code>SMTP_PASSWORD</code> não estão definidos.
+      Para Gmail, use um app password de 16 caracteres sem espaços.
+    </div>
+  {% endif %}
+  <form method="post">
+    <div class="field">
+      <label class="raw" for="notify">Destinatário padrão (fallback)</label>
+      <input type="text" id="notify" name="notify_email" value="{{ notify_email }}"
+             placeholder="admin@winningrealty.com">
+      <p class="hint">Usado quando o template espera um endereço do payload e ele vem
+         vazio. Sem isso, esses e-mails não são enviados — ficam registrados como
+         "Sem destinatário".</p>
+    </div>
+    <input type="hidden" name="test_allowlist" value="{{ allowlist }}">
+    <div class="toolbar"><button class="btn" type="submit">Salvar destinatário</button></div>
+  </form>
 </div>
 
 <div class="panel">
@@ -39,30 +65,31 @@
     {% if parsed %}
       <p class="meter">Reconhecidos: <b>{{ parsed | join(', ') }}</b></p>
     {% endif %}
-    <p></p>
-    <button class="btn" type="submit">Salvar allowlist</button>
+    <input type="hidden" name="notify_email" value="{{ notify_email }}">
+    <div class="toolbar"><button class="btn" type="submit">Salvar allowlist</button></div>
   </form>
 </div>
 
 <h2>Entregas recentes</h2>
 {% if deliveries %}
 <div class="panel">
-  <table>
-    <thead><tr><th>Quando</th><th>Venue</th><th>Para</th><th>Status</th><th>SID</th><th>Erro</th></tr></thead>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Quando</th><th>Venue</th><th>Canal</th><th>Para</th><th>Regra</th><th>Status</th><th>Erro</th></tr></thead>
     <tbody>
     {% for d in deliveries %}
       {% set lbl, tone = delivery_labels.get(d.status, (d.status, 'hold')) %}
       <tr>
         <td>{{ d.updated_at[:16].replace('T', ' ') }}</td>
         <td>{{ d.venue_name or '—' }}</td>
+        <td>{{ 'E-mail' if d.channel == 'email' else 'SMS' }}</td>
         <td>{{ d.to_number }}</td>
+        <td>{{ d.rule_name or '—' }}</td>
         <td><span class="state {{ tone }}">{{ lbl }}</span></td>
-        <td>{{ d.provider_sid or '—' }}</td>
         <td>{{ d.error_message or '' }}</td>
       </tr>
     {% endfor %}
     </tbody>
-  </table>
+  </table></div>
 </div>
 {% else %}
 <div class="empty">Nenhuma mensagem enviada ainda.</div>

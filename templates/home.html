@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Automações{% endblock %}
+{% block body %}
+
+<h1>Automações</h1>
+<p class="sub">Uma linha por agente. Pause, ative e veja o que passou por cada uma.</p>
+
+<div class="autos">
+  {% for c in cards %}
+    {% set v = c.v %}
+    <div class="auto {{ 'off' if not v.active }}">
+      <div class="auto-main">
+        <div class="auto-title">
+          <span class="dot {{ 'on' if v.active and c.active_rules else ('warn' if v.active else '') }}"></span>
+          <a href="{{ url_for('rules', venue=v.id) }}">{{ v.name }}</a>
+          {% for ch in c.channels %}
+            <span class="pill hold">{{ 'E-mail' if ch == 'email' else 'SMS' }}</span>
+          {% endfor %}
+          {% if not c.rules %}
+            <span class="pill fault">Sem regras</span>
+          {% elif not c.active_rules %}
+            <span class="pill fault">Todas as regras pausadas</span>
+          {% endif %}
+        </div>
+
+        <div class="auto-meta">
+          <span>{{ c.active_rules | length }} de {{ c.rules | length }} regra{{ 's' if c.rules | length != 1 }} ativa{{ 's' if c.active_rules | length != 1 }}</span>
+          <span>·</span>
+          <span>{{ c.count_24h }} chamada{{ 's' if c.count_24h != 1 }} em 24h</span>
+          {% if c.failures %}
+            <span>·</span>
+            <a class="warn-link" href="{{ url_for('events', venue=v.id) }}">{{ c.failures }} com problema</a>
+          {% endif %}
+          {% if c.last %}
+            <span>·</span>
+            <span>última {{ c.last.received_at[5:16].replace('T', ' ') }}</span>
+          {% else %}
+            <span>·</span>
+            <span>nenhuma chamada ainda</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="auto-actions">
+        <a class="btn ghost" href="{{ url_for('events', venue=v.id) }}">Chamadas</a>
+        <a class="btn ghost" href="{{ url_for('rules', venue=v.id) }}">Regras</a>
+        <form method="post" action="{{ url_for('toggle_venue', venue_id=v.id) }}">
+          <button class="btn {{ 'ghost' if v.active else '' }}" type="submit">
+            {{ 'Pausar' if v.active else 'Ativar' }}
+          </button>
+        </form>
+      </div>
+
+      {% if c.rules %}
+      <div class="auto-rules">
+        {% for r in c.rules %}
+          <form method="post" action="{{ url_for('toggle_rule', rule_id=r.id) }}" class="rule-chip">
+            <button type="submit" class="{{ 'on' if r.active }}"
+                    title="{{ 'Pausar' if r.active else 'Ativar' }} esta regra">
+              <span class="dot {{ 'on' if r.active }}"></span>
+              {{ r.name }}
+              <span class="ch">{{ 'e-mail' if r.channel == 'email' else 'sms' }}</span>
+            </button>
+          </form>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+  {% endfor %}
+</div>
+
+{% endblock %}

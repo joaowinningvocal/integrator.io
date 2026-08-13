@@ -5,9 +5,9 @@ Hub de automação de webhook do Winning Vocal.
 Substitui os cenários do Make.com. Cada agente de voz tem sua própria URL de webhook;
 o hub identifica a venue pela URL, resolve o link do pacote e monta o SMS.
 
-**Fase atual: 3.** Recebe, normaliza, resolve, monta o SMS e envia pela Twilio,
-com registro de entrega, retry e callback de status.
-O envio só acontece no modo que você escolher no topo do console.
+**Fase atual: 4.** Recebe, normaliza, roda regras editáveis, monta a mensagem e
+envia por **SMS (Twilio)** ou **e-mail (SMTP)**, com registro de entrega, retry e
+callback de status. O envio só acontece no modo escolhido no topo do console.
 
 ---
 
@@ -25,9 +25,14 @@ O envio só acontece no modo que você escolher no topo do console.
    | `ADMIN_PASSWORD` | a senha do console |
    | `SECRET_KEY` | `python -c "import secrets;print(secrets.token_urlsafe(32))"` |
    | `DATA_DIR` | `/data` |
-   | `PUBLIC_BASE_URL` | a URL pública do app (preencha depois do primeiro deploy) |
+   | `PUBLIC_BASE_URL` | a URL pública do app, **com `https://`** (preencha depois do primeiro deploy) |
    | `TWILIO_ACCOUNT_SID` | o Account SID da conta Twilio |
    | `TWILIO_AUTH_TOKEN` | o Auth Token da mesma conta |
+   | `SMTP_USER` | a conta que envia os e-mails (ex. `app@winningrealty.com`) |
+   | `SMTP_PASSWORD` | app password de 16 caracteres, **sem espaços** |
+   | `SMTP_HOST` | opcional, padrão `smtp.gmail.com` |
+   | `SMTP_PORT` | opcional, padrão `587` |
+   | `SMTP_FROM` | opcional; se omitido usa `SMTP_USER` |
 
 5. *Settings → Networking → Generate Domain*.
 6. Confira `https://SEU-APP.up.railway.app/health` → deve responder
@@ -37,7 +42,8 @@ Deploys seguintes: só `git push`.
 
 ## 2. Pegar as URLs dos webhooks
 
-Entre no console, vá em **Venues**. Cada uma mostra uma URL como:
+Entre no console e vá em **Webhooks**. A tela lista uma URL por agente, com botão
+de copiar em cada uma e um "copiar tudo" no topo. Formato:
 
 ```
 https://SEU-APP.up.railway.app/hook/hustler-lv/k/TOKEN
@@ -64,6 +70,60 @@ Uma ligação de teste deve aparecer em **Chamadas** em segundos.
 
 ---
 
+## Regras
+
+Cada venue tem uma lista de regras ordenada por prioridade (menor roda primeiro).
+Uma regra sem condição nenhuma casa com tudo — é o fallback, e deve ficar com a
+maior prioridade numérica.
+
+**Parar aqui** (ligado por padrão): a regra que casa encerra a cadeia e a chamada
+gera uma mensagem só. Desligado, a avaliação continua nas regras seguintes e a
+mesma chamada pode gerar duas ou mais mensagens — que é como o Make encadeia,
+onde um módulo dispara e o fluxo segue para o próximo filtro.
+
+Condições comparam um campo do payload com um valor. Operadores: igual, diferente,
+contém, não contém, vazio, preenchido, é sim/verdadeiro, é não/falso.
+
+Os dois últimos existem porque agentes escrevem booleanos de formas variadas —
+`Yes`, `true`, `1`, `No`, `unsuccessful`, vazio. Em vez de você adivinhar a grafia,
+use **é sim** ou **é não**.
+
+A aba Regras mostra, ao final, **os campos vistos nos payloads recentes** daquela
+venue, com um exemplo de valor. É de lá que saem os nomes para usar nas condições
+e nos templates.
+
+### Como a Winning Realty está configurada
+
+| Prioridade | Regra | Vai para | Parar aqui |
+|---|---|---|---|
+| 10 | Transferência falhou | `{{agent_email}}` | sim |
+| 20 | Transferência concluída | `{{agent_email}}` | sim |
+| 100 | Chamada atendida (fallback) | destinatário padrão de Ajustes | sim |
+
+Chamada transferida notifica **só o agente**. Chamada sem transferência gera o
+log geral para o admin.
+
+O endereço do admin é o **destinatário padrão** em Ajustes — mude ali, não no
+template.
+
+## Canais
+
+- **SMS** — Twilio. Vai para o telefone do cliente, do número da venue.
+- **E-mail** — SMTP. O destinatário sai do campo **Destinatário** do template,
+  que pode usar um campo do payload (ex. `{{agent_email}}`) ou um endereço fixo.
+  Se vier vazio, cai no **destinatário padrão** de Ajustes; sem esse padrão, a
+  mensagem não é enviada e fica registrada como "Sem destinatário".
+
+## Segurança do payload
+
+O hub **não grava campos de aparência sensível**. Qualquer chave contendo
+`password`, `senha`, `secret`, `token`, `api_key` ou `credential` é substituída
+por um marcador antes do payload ir para o banco.
+
+Isso importa porque o payload do agente da Winning Realty declara campos como
+`godaddy_password`, `instagram_password` e `username_and_password`. Se algum dia
+forem preenchidos, não ficam registrados em texto puro.
+
 ## Como o roteamento funciona
 
 ```
@@ -76,13 +136,29 @@ POST /hook/<slug>/k/<token>
    ├─ normaliza o payload    → telefone em E.164, first_name "Unknown" vira vazio,
    │                           lê tanto o nível raiz quanto custom_parameters
    ├─ call_session_id repetido → "Duplicado", não processa de novo
-   ├─ procura o pacote       → chave normalizada: "$20 SPECIAL" == "$20 Special"
-   ├─ renderiza o template   → {{first_name|there}}, {{link}}, {{package}}
-   └─ registra o preview     → "Pronto pra enviar"
+   ├─ roda as regras         → primeira que casar define canal e template
+   ├─ procura o pacote       → só se o template usar {{link}}
+   │                           chave normalizada: "$20 SPECIAL" == "$20 Special"
+   ├─ renderiza o template   → {{campo}} ou {{campo|padrão}}
+   └─ envia ou registra      → conforme o modo
 ```
+
+O achatamento do payload cobre três formatos: campos no nível raiz, aninhados em
+`custom_parameters`, e aninhados em `post_call_analysis` no formato
+`{"type": "string", "value": "..."}` — este último é o do agente da Winning Realty.
 
 Status possíveis: `preview_ok`, `duplicate`, `no_link`, `no_phone`,
 `no_template`, `no_sender`, `unknown_venue`, `bad_token`, `venue_off`.
+
+## Painel de automações
+
+A tela inicial lista um cartão por agente: quantas regras estão ativas, quais
+canais usa, quantas chamadas nas últimas 24h, quantas com problema, e quando foi
+a última. Dali dá para **pausar ou ativar a venue inteira**, ou clicar numa regra
+para pausá-la individualmente.
+
+Venue pausada responde `403` ao webhook e registra o evento, mas não envia nada.
+Serve para desligar uma automação sem mexer no agente do Agni.
 
 ## Modos
 
@@ -103,6 +179,11 @@ O hub separa erro **permanente** de **transitório**. STOP do destinatário,
 número fixo, número inválido, filtro da operadora — não adianta repetir, marca
 `failed` direto. Timeout de rede, 429 e 5xx da Twilio viram `retry`, e um worker
 tenta de novo a cada minuto, até 3 tentativas.
+
+**Cuidado com `PUBLIC_BASE_URL`:** ela tem que incluir o esquema. Sem `https://`,
+a Twilio recusa o StatusCallback com *"is not a valid URL"* e a mensagem **nem é
+criada** — a entrega falha inteira, não só o rastreamento. O hub agora adiciona
+`https://` sozinho se você esquecer, mas confira o valor na aba Ajustes.
 
 Para o status virar **Entregue** em vez de parar em **Saiu da Twilio**, o hub
 precisa do callback. Defina `PUBLIC_BASE_URL` e o próprio hub manda a URL de

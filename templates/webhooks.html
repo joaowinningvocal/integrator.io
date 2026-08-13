@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Webhooks{% endblock %}
+{% block body %}
+
+<h1>Webhooks</h1>
+<p class="sub">Uma URL por agente. Cole cada uma na ação de chamar webhook do agente
+   correspondente no Agni. O token está na própria URL — trate como senha.</p>
+
+<div class="panel">
+  <div class="panel-head">
+    <h2>Todas as URLs</h2>
+    <button class="btn ghost" type="button" onclick="copyAll(this)">Copiar tudo</button>
+  </div>
+
+  <div class="hooks">
+    {% for r in rows %}
+      <div class="hook">
+        <div class="hook-head">
+          <span class="dot {{ 'on' if r.v.active }}"></span>
+          <b>{{ r.v.name }}</b>
+          <span class="meter">{{ r.v.sender_number or 'sem número' }}</span>
+          {% if not r.v.active %}<span class="pill hold">Pausada</span>{% endif %}
+        </div>
+        <div class="hook-url">
+          <code id="u{{ r.v.id }}">{{ r.url }}</code>
+          <button class="btn ghost" type="button"
+                  onclick="copyOne('u{{ r.v.id }}', this)">Copiar</button>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="panel">
+  <h2 style="margin-bottom:12px">Se o Agni permitir header</h2>
+  <p class="meter">Dá para usar a URL curta <code>/hook/&lt;slug&gt;</code> e mandar o token
+     no header <code>X-Integrator-Token</code>. Funciona igual — só é um pouco mais discreto
+     que deixar o token na URL.</p>
+</div>
+
+<textarea id="bulk" style="position:absolute;left:-9999px" aria-hidden="true">{% for r in rows %}{{ r.v.name }}
+{{ r.url }}
+
+{% endfor %}</textarea>
+
+<script>
+function flash(btn, txt) {
+  const old = btn.textContent;
+  btn.textContent = txt;
+  setTimeout(() => { btn.textContent = old; }, 1400);
+}
+function copyOne(id, btn) {
+  const text = document.getElementById(id).textContent.trim();
+  navigator.clipboard.writeText(text).then(
+    () => flash(btn, 'Copiado'),
+    () => flash(btn, 'Falhou')
+  );
+}
+function copyAll(btn) {
+  const text = document.getElementById('bulk').value.trim();
+  navigator.clipboard.writeText(text).then(
+    () => flash(btn, 'Copiado'),
+    () => flash(btn, 'Falhou')
+  );
+}
+</script>
+
+{% endblock %}

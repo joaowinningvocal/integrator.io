@@ -57,8 +57,10 @@ CREATE TABLE IF NOT EXISTS packages (
 CREATE TABLE IF NOT EXISTS templates (
     id       INTEGER PRIMARY KEY AUTOINCREMENT,
     venue_id INTEGER NOT NULL REFERENCES venues(id) ON DELETE CASCADE,
-    name     TEXT NOT NULL,
-    body     TEXT NOT NULL,
+    name      TEXT NOT NULL,
+    subject   TEXT NOT NULL DEFAULT '',
+    recipient TEXT NOT NULL DEFAULT '',
+    body      TEXT NOT NULL,
     UNIQUE (venue_id, name)
 );
 
@@ -87,12 +89,30 @@ CREATE INDEX IF NOT EXISTS idx_events_received ON events(received_at DESC);
 CREATE INDEX IF NOT EXISTS idx_events_session  ON events(venue_id, call_session_id);
 CREATE INDEX IF NOT EXISTS idx_events_status   ON events(status);
 
+CREATE TABLE IF NOT EXISTS rules (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    venue_id      INTEGER NOT NULL REFERENCES venues(id) ON DELETE CASCADE,
+    name          TEXT NOT NULL,
+    priority      INTEGER NOT NULL DEFAULT 100,
+    conditions    TEXT NOT NULL DEFAULT '[]',
+    match_all     INTEGER NOT NULL DEFAULT 1,
+    channel       TEXT NOT NULL DEFAULT 'sms',
+    template_name TEXT NOT NULL,
+    stop_after    INTEGER NOT NULL DEFAULT 1,
+    active        INTEGER NOT NULL DEFAULT 1
+);
+
+CREATE INDEX IF NOT EXISTS idx_rules_venue ON rules(venue_id, priority);
+
 CREATE TABLE IF NOT EXISTS deliveries (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
     event_id      INTEGER REFERENCES events(id) ON DELETE SET NULL,
     venue_id      INTEGER REFERENCES venues(id) ON DELETE SET NULL,
     created_at    TEXT NOT NULL,
     updated_at    TEXT NOT NULL,
+    channel       TEXT NOT NULL DEFAULT 'sms',
+    rule_name     TEXT,
+    subject       TEXT,
     to_number     TEXT NOT NULL,
     from_number   TEXT NOT NULL,
     body          TEXT NOT NULL,
@@ -121,6 +141,7 @@ DEFAULT_SETTINGS = {
     "mode": "dry_run",
     "test_allowlist": "",
     "status_callback_token": "",
+    "notify_email": "",
 }
 
 # --------------------------------------------------------------------------
@@ -144,6 +165,63 @@ Kings of Hustler
 6007 Dean Martin Drive
 (702) 795-3131"""
 
+LILY_BASE = """Lily handled a call!
+ACTION NEEDED: {{action_needed}}
+Client Name: {{client_name}}
+Client Phone: {{client_phone}}
+Client E-mail: {{client_email}}
+Call Summary: {{call_summary}}"""
+
+LILY_TRANSFER_OK = """Hi, {{agent_name|there}},
+
+{{client_name}} reached out to you and the AI agent transferred the call!
+
+Full name:
+{{client_name}}
+Client E-mail:
+{{client_email}}
+Phone: {{client_phone}}
+Summary of the call:
+{{call_summary}}
+Service: {{service}}
+Property: {{property}}
+{{property_link}}
+
+Recording:
+{{recording_url}}"""
+
+LILY_TRANSFER_FAIL = """Hi there, {{agent_name|there}},
+
+Lily tried to transfer a call to you, but the call transfer was unsuccessful, so she gathered the client's information so you can call back.
+
+Full name:
+{{client_name}}
+Client E-mail:
+{{client_email}}
+Phone: {{client_phone}}
+Summary of the call:
+{{call_summary}}
+Service: {{service}}
+Property: {{property}}
+{{property_link}}
+
+Recording:
+{{recording_url}}"""
+
+# Venues sem tabela de pacotes ainda. Criadas desligadas: o webhook responde 403
+# e registra, mas não envia, até você cadastrar pacotes e ligar.
+PENDING_VENUES = [
+    ("dejavu-ypsilanti", "Deja Vu Showgirls Ypsilanti", "+17348965038"),
+    ("dejavu-stockton",  "Deja Vu Stockton",            "+19163504781"),
+    ("dejavu-kalamazoo", "Deja Vu Kalamazoo",           "+12697754582"),
+    ("cats-meow",        "Cats Meow Karaoke",           "+15046819283"),
+    ("barely-legal-nola","Barely Legal New Orleans",    "+15044746323"),
+    ("hustler-nola",     "Hustler New Orleans",         "+15045141440"),
+]
+
+# Slugs que não devem existir. Removidos no boot se não tiverem histórico.
+RETIRED_SLUGS = ("gobest", "james-wv")
+
 SEED_VENUES = [
     {
         "slug": "hustler-lv",
@@ -158,6 +236,32 @@ SEED_VENUES = [
             ("Blowout Fest", "$450", "https://app.cartvip.com/vegashustlerclub/package/blowout-fest-26/checkout"),
             ("What Happens In Vegas", "$800", "https://app.cartvip.com/vegashustlerclub/package/what-happens-in-vegas-28/checkout"),
             ("Guaranteed Over The Top Experience", "$1200", "https://app.cartvip.com/vegashustlerclub/package/over-the-top-29/checkout"),
+        ],
+    },
+    {
+        "slug": "winning-realty",
+        "name": "Winning Realty (Lily)",
+        "sender_number": "",
+        "template": None,
+        "packages": [],
+        "templates": [
+            ("call_handling", "Lily handled a call!", "", LILY_BASE),
+            ("transfer_ok", "Someone reached out to you!", "{{agent_email}}", LILY_TRANSFER_OK),
+            ("transfer_failed", "Lily tried to transfer a call to you, but it didn't go through!",
+             "{{agent_email}}", LILY_TRANSFER_FAIL),
+        ],
+        "rules": [
+            # stop_after = 1: chamada transferida notifica só o agente.
+            # O log geral para o admin fica para as chamadas não transferidas.
+            ("Transferência falhou", 10,
+             [{"field": "was_transfer_made", "op": "truthy", "value": ""},
+              {"field": "was_transfer_sucessful", "op": "falsy", "value": ""}],
+             1, "email", "transfer_failed", 1),
+            ("Transferência concluída", 20,
+             [{"field": "was_transfer_made", "op": "truthy", "value": ""},
+              {"field": "was_transfer_sucessful", "op": "truthy", "value": ""}],
+             1, "email", "transfer_ok", 1),
+            ("Chamada atendida", 100, [], 1, "email", "call_handling", 1),
         ],
     },
     {
@@ -277,6 +381,24 @@ def init_db():
     if not row or not row["value"]:
         conn.execute("UPDATE settings SET value = ? WHERE key = 'status_callback_token'", (new_token(),))
 
+    for slug in RETIRED_SLUGS:
+        row = conn.execute("SELECT id FROM venues WHERE slug = ?", (slug,)).fetchone()
+        if row:
+            used = conn.execute(
+                "SELECT 1 FROM events WHERE venue_id = ? LIMIT 1", (row["id"],)
+            ).fetchone()
+            if not used:
+                conn.execute("DELETE FROM venues WHERE id = ?", (row["id"],))
+
+    for slug, name, number in PENDING_VENUES:
+        exists = conn.execute("SELECT 1 FROM venues WHERE slug = ?", (slug,)).fetchone()
+        if not exists:
+            conn.execute(
+                "INSERT INTO venues (slug, name, token, sender_number, active, created_at) "
+                "VALUES (?, ?, ?, ?, 0, ?)",
+                (slug, name, new_token(), number, now_iso()),
+            )
+
     for v in SEED_VENUES:
         row = conn.execute("SELECT id FROM venues WHERE slug = ?", (v["slug"],)).fetchone()
         if row:
@@ -288,10 +410,38 @@ def init_db():
                 (v["slug"], v["name"], new_token(), v["sender_number"], now_iso()),
             )
             venue_id = cur.lastrowid
-        conn.execute(
-            "INSERT OR IGNORE INTO templates (venue_id, name, body) VALUES (?, ?, ?)",
-            (venue_id, "booking_link", v["template"]),
-        )
+        if v.get("template"):
+            conn.execute(
+                "INSERT OR IGNORE INTO templates (venue_id, name, subject, body) VALUES (?, ?, '', ?)",
+                (venue_id, "booking_link", v["template"]),
+            )
+            has_rule = conn.execute(
+                "SELECT 1 FROM rules WHERE venue_id = ? AND name = ?",
+                (venue_id, "Link do pacote"),
+            ).fetchone()
+            if not has_rule:
+                conn.execute(
+                    "INSERT INTO rules (venue_id, name, priority, conditions, match_all, "
+                    "channel, template_name, stop_after, active) "
+                    "VALUES (?, ?, 100, '[]', 1, 'sms', ?, 1, 1)",
+                    (venue_id, "Link do pacote", "booking_link"),
+                )
+        for name, subject, recipient, body in v.get("templates", []):
+            conn.execute(
+                "INSERT OR IGNORE INTO templates (venue_id, name, subject, recipient, body) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (venue_id, name, subject, recipient, body),
+            )
+        for name, prio, conds, match_all, channel, tpl, stop in v.get("rules", []):
+            exists = conn.execute(
+                "SELECT 1 FROM rules WHERE venue_id = ? AND name = ?", (venue_id, name)
+            ).fetchone()
+            if not exists:
+                conn.execute(
+                    "INSERT INTO rules (venue_id, name, priority, conditions, match_all, "
+                    "channel, template_name, stop_after, active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)",
+                    (venue_id, name, prio, json.dumps(conds), match_all, channel, tpl, stop),
+                )
         for label, price, link in v["packages"]:
             conn.execute(
                 "INSERT OR IGNORE INTO packages (venue_id, label, norm_key, price, link) "
@@ -396,13 +546,62 @@ def get_template(venue_id: int, name: str = "booking_link"):
     ).fetchone()
 
 
-def save_template(venue_id: int, name: str, body: str):
+def save_template(venue_id: int, name: str, body: str, subject: str = "", recipient: str = ""):
     db = get_db()
     db.execute(
-        "INSERT INTO templates (venue_id, name, body) VALUES (?, ?, ?) "
-        "ON CONFLICT(venue_id, name) DO UPDATE SET body = excluded.body",
-        (venue_id, name, body),
+        "INSERT INTO templates (venue_id, name, subject, recipient, body) VALUES (?, ?, ?, ?, ?) "
+        "ON CONFLICT(venue_id, name) DO UPDATE SET "
+        "body = excluded.body, subject = excluded.subject, recipient = excluded.recipient",
+        (venue_id, name, subject, recipient, body),
     )
+    db.commit()
+
+
+def list_templates(venue_id: int):
+    return get_db().execute(
+        "SELECT * FROM templates WHERE venue_id = ? ORDER BY name", (venue_id,)
+    ).fetchall()
+
+
+# ---------- rules ----------
+
+def list_rules(venue_id: int):
+    return get_db().execute(
+        "SELECT * FROM rules WHERE venue_id = ? ORDER BY priority, id", (venue_id,)
+    ).fetchall()
+
+
+def active_rules(venue_id: int):
+    return get_db().execute(
+        "SELECT * FROM rules WHERE venue_id = ? AND active = 1 ORDER BY priority, id",
+        (venue_id,),
+    ).fetchall()
+
+
+def get_rule(rule_id: int):
+    return get_db().execute("SELECT * FROM rules WHERE id = ?", (rule_id,)).fetchone()
+
+
+def save_rule(venue_id, name, priority, conditions, match_all, channel,
+              template_name, stop_after, active, rule_id=None):
+    db = get_db()
+    args = (name, int(priority), conditions, int(match_all), channel,
+            template_name, int(stop_after), int(active))
+    if rule_id:
+        db.execute(
+            "UPDATE rules SET name=?, priority=?, conditions=?, match_all=?, channel=?, "
+            "template_name=?, stop_after=?, active=? WHERE id=?", (*args, rule_id))
+    else:
+        db.execute(
+            "INSERT INTO rules (name, priority, conditions, match_all, channel, "
+            "template_name, stop_after, active, venue_id) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", (*args, venue_id))
+    db.commit()
+
+
+def delete_rule(rule_id: int):
+    db = get_db()
+    db.execute("DELETE FROM rules WHERE id = ?", (rule_id,))
     db.commit()
 
 
@@ -434,6 +633,12 @@ def insert_event(**kw) -> int:
     )
     db.commit()
     return cur.lastrowid
+
+
+def update_event_note(event_id: int, note: str):
+    db = get_db()
+    db.execute("UPDATE events SET note = ? WHERE id = ?", (note, event_id))
+    db.commit()
 
 
 def list_events(limit=100, venue_id=None, status=None):
@@ -470,14 +675,17 @@ def event_counts():
 
 # ---------- deliveries ----------
 
-def create_delivery(event_id, venue_id, to_number, from_number, body, status="queued"):
+def create_delivery(event_id, venue_id, to_number, from_number, body, status="queued",
+                    channel="sms", subject="", rule_name=""):
     db = get_db()
     ts = now_iso()
+    provider = "twilio" if channel == "sms" else "smtp"
     cur = db.execute(
-        "INSERT INTO deliveries (event_id, venue_id, created_at, updated_at, to_number, "
-        "from_number, body, provider, status, attempts) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, 'twilio', ?, 0)",
-        (event_id, venue_id, ts, ts, to_number, from_number, body, status),
+        "INSERT INTO deliveries (event_id, venue_id, created_at, updated_at, channel, "
+        "rule_name, subject, to_number, from_number, body, provider, status, attempts) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)",
+        (event_id, venue_id, ts, ts, channel, rule_name, subject, to_number,
+         from_number, body, provider, status),
     )
     db.commit()
     return cur.lastrowid
@@ -529,7 +737,12 @@ def get_delivery(delivery_id):
     ).fetchone()
 
 
-def pending_retries(limit=20):
+def pending_retries(limit=20, channel=None):
+    if channel:
+        return get_db().execute(
+            "SELECT * FROM deliveries WHERE status = 'retry' AND attempts < 3 "
+            "AND channel = ? ORDER BY id LIMIT ?", (channel, limit)
+        ).fetchall()
     return get_db().execute(
         "SELECT * FROM deliveries WHERE status = 'retry' AND attempts < 3 "
         "ORDER BY id LIMIT ?", (limit,)

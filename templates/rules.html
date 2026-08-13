@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+{% block title %}Regras{% endblock %}
+{% block body %}
+
+<h1>Regras e templates</h1>
+<p class="sub">As regras rodam por prioridade. Uma regra com <b>parar aqui</b> encerra a
+   cadeia; sem isso, a avaliação continua e a chamada pode gerar mais de uma mensagem —
+   é assim que o Make encadeia. Regra sem condição nenhuma serve de fallback.</p>
+
+<div class="filters">
+  {% for v in all_venues %}
+    <a class="chip {{ 'on' if venue and venue.id == v.id }}"
+       href="{{ url_for('rules', venue=v.id) }}">{{ v.name }}</a>
+  {% endfor %}
+</div>
+
+{% if venue %}
+
+{% for r in rules %}
+  {% set conds = r.conditions | fromjson %}
+  <div class="panel">
+    <div class="panel-head">
+      <h2>{{ r.name }}</h2>
+      <span class="pill {{ 'live' if r.active else 'hold' }}">{{ 'Ativa' if r.active else 'Desligada' }}</span>
+      <span class="pill hold">{{ 'E-mail' if r.channel == 'email' else 'SMS' }}</span>
+      <span class="meter">prioridade {{ r.priority }}</span>
+    </div>
+
+    <form method="post" action="{{ url_for('save_rule') }}">
+      <input type="hidden" name="venue_id" value="{{ venue.id }}">
+      <input type="hidden" name="rule_id" value="{{ r.id }}">
+
+      <div class="grid-2">
+        <div class="field">
+          <label for="n{{ r.id }}">Nome</label>
+          <input type="text" id="n{{ r.id }}" name="name" value="{{ r.name }}">
+        </div>
+        <div class="field">
+          <label for="p{{ r.id }}">Prioridade (menor roda primeiro)</label>
+          <input type="text" id="p{{ r.id }}" name="priority" value="{{ r.priority }}">
+        </div>
+        <div class="field">
+          <label for="c{{ r.id }}">Canal</label>
+          <select id="c{{ r.id }}" name="channel">
+            <option value="sms" {{ 'selected' if r.channel == 'sms' }}>SMS (Twilio)</option>
+            <option value="email" {{ 'selected' if r.channel == 'email' }}>E-mail (SMTP)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="t{{ r.id }}">Template</label>
+          <select id="t{{ r.id }}" name="template_name">
+            {% for t in templates %}
+              <option value="{{ t.name }}" {{ 'selected' if r.template_name == t.name }}>{{ t.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <label>Condições</label>
+      {% for c in conds %}
+        <div class="row" style="margin-bottom:8px">
+          <input type="text" name="cond_field" value="{{ c.field }}" placeholder="campo">
+          <select name="cond_op">
+            {% for op, lbl in operators.items() %}
+              <option value="{{ op }}" {{ 'selected' if c.op == op }}>{{ lbl }}</option>
+            {% endfor %}
+          </select>
+          <input type="text" name="cond_value" value="{{ c.value }}" placeholder="valor">
+        </div>
+      {% endfor %}
+      <div class="row" style="margin-bottom:8px">
+        <input type="text" name="cond_field" placeholder="novo campo (deixe vazio para ignorar)">
+        <select name="cond_op">
+          {% for op, lbl in operators.items() %}<option value="{{ op }}">{{ lbl }}</option>{% endfor %}
+        </select>
+        <input type="text" name="cond_value" placeholder="valor">
+      </div>
+      {% if not conds %}
+        <p class="hint">Sem condições — esta regra casa com tudo. Serve de fallback.</p>
+      {% endif %}
+
+      <div class="toolbar">
+        <label style="text-transform:none;letter-spacing:0;margin:0">
+          <input type="checkbox" name="match_all" value="1" style="width:auto"
+                 {{ 'checked' if r.match_all }}> exigir todas as condições
+        </label>
+        <label style="text-transform:none;letter-spacing:0;margin:0">
+          <input type="checkbox" name="stop_after" value="1" style="width:auto"
+                 {{ 'checked' if r.stop_after }}> parar aqui
+        </label>
+        <label style="text-transform:none;letter-spacing:0;margin:0">
+          <input type="checkbox" name="active" value="1" style="width:auto"
+                 {{ 'checked' if r.active }}> ativa
+        </label>
+        <button class="btn" type="submit">Salvar regra</button>
+      </div>
+    </form>
+
+    <form method="post" action="{{ url_for('save_rule') }}" style="margin-top:10px">
+      <input type="hidden" name="venue_id" value="{{ venue.id }}">
+      <button class="btn danger" name="delete" value="{{ r.id }}" type="submit"
+              onclick="return confirm('Remover a regra {{ r.name }}?')">Remover regra</button>
+    </form>
+  </div>
+{% endfor %}
+
+<div class="panel">
+  <div class="panel-head"><h2>Nova regra</h2></div>
+  <form method="post" action="{{ url_for('save_rule') }}">
+    <input type="hidden" name="venue_id" value="{{ venue.id }}">
+    <div class="grid-2">
+      <div class="field">
+        <label for="nn">Nome</label>
+        <input type="text" id="nn" name="name" placeholder="Transferência falhou">
+      </div>
+      <div class="field">
+        <label for="np">Prioridade</label>
+        <input type="text" id="np" name="priority" value="50">
+      </div>
+      <div class="field">
+        <label for="nc">Canal</label>
+        <select id="nc" name="channel">
+          <option value="sms">SMS (Twilio)</option>
+          <option value="email">E-mail (SMTP)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="nt">Template</label>
+        <select id="nt" name="template_name">
+          {% for t in templates %}<option value="{{ t.name }}">{{ t.name }}</option>{% endfor %}
+        </select>
+      </div>
+    </div>
+    <label>Condições</label>
+    {% for i in range(3) %}
+      <div class="row" style="margin-bottom:8px">
+        <input type="text" name="cond_field" placeholder="campo">
+        <select name="cond_op">
+          {% for op, lbl in operators.items() %}<option value="{{ op }}">{{ lbl }}</option>{% endfor %}
+        </select>
+        <input type="text" name="cond_value" placeholder="valor">
+      </div>
+    {% endfor %}
+    <div class="toolbar">
+      <label style="text-transform:none;letter-spacing:0;margin:0">
+        <input type="checkbox" name="match_all" value="1" checked style="width:auto"> exigir todas
+      </label>
+      <label style="text-transform:none;letter-spacing:0;margin:0">
+        <input type="checkbox" name="stop_after" value="1" checked style="width:auto"> parar aqui
+      </label>
+      <label style="text-transform:none;letter-spacing:0;margin:0">
+        <input type="checkbox" name="active" value="1" checked style="width:auto"> ativa
+      </label>
+      <button class="btn" type="submit">Criar regra</button>
+    </div>
+  </form>
+</div>
+
+<h2>Templates</h2>
+{% for t in templates %}
+<div class="panel">
+  <div class="panel-head"><h2>{{ t.name }}</h2></div>
+  <form method="post" action="{{ url_for('save_template_route') }}">
+    <input type="hidden" name="venue_id" value="{{ venue.id }}">
+    <input type="hidden" name="name" value="{{ t.name }}">
+    <div class="grid-2">
+      <div class="field">
+        <label class="raw" for="s{{ t.id }}">Assunto (só para e-mail)</label>
+        <input type="text" id="s{{ t.id }}" name="subject" value="{{ t.subject or '' }}">
+      </div>
+      <div class="field">
+        <label class="raw" for="rc{{ t.id }}">Destinatário (só para e-mail)</label>
+        <input type="text" id="rc{{ t.id }}" name="recipient" value="{{ t.recipient or '' }}"
+               placeholder="{{ '{{agent_email}}' }} ou um endereço fixo">
+        <p class="hint">Pode usar um campo do payload. Se vier vazio, cai no
+           destinatário padrão de Ajustes.</p>
+      </div>
+    </div>
+    <div class="field">
+      <label class="raw" for="b{{ t.id }}">Corpo</label>
+      <textarea id="b{{ t.id }}" name="body" rows="10">{{ t.body }}</textarea>
+      <p class="hint">Use {{ '{{campo}}' }} ou {{ '{{campo|padrão}}' }}. Qualquer campo do
+         payload serve — veja a lista abaixo.</p>
+    </div>
+    <div class="toolbar"><button class="btn" type="submit">Salvar template</button></div>
+  </form>
+</div>
+{% endfor %}
+
+<div class="panel">
+  <div class="panel-head"><h2>Novo template</h2></div>
+  <form method="post" action="{{ url_for('save_template_route') }}">
+    <input type="hidden" name="venue_id" value="{{ venue.id }}">
+    <div class="field">
+      <label for="tn">Nome interno</label>
+      <input type="text" id="tn" name="name" placeholder="transfer_failed">
+    </div>
+    <div class="grid-2">
+      <div class="field">
+        <label class="raw" for="ts">Assunto (só para e-mail)</label>
+        <input type="text" id="ts" name="subject">
+      </div>
+      <div class="field">
+        <label class="raw" for="trc">Destinatário (só para e-mail)</label>
+        <input type="text" id="trc" name="recipient" placeholder="{{ '{{agent_email}}' }}">
+      </div>
+    </div>
+    <div class="field">
+      <label class="raw" for="tb">Corpo</label>
+      <textarea id="tb" name="body" rows="8"></textarea>
+    </div>
+    <div class="toolbar"><button class="btn" type="submit">Criar template</button></div>
+  </form>
+</div>
+
+{% if fields_seen %}
+<h2>Campos vistos nos payloads recentes</h2>
+<div class="panel">
+  <p class="sub">Extraídos das últimas chamadas desta venue. Use estes nomes nas condições
+     e nos templates.</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Campo</th><th>Exemplo</th></tr></thead>
+      <tbody>
+        {% for name, sample in fields_seen %}
+          <tr><td><b>{{ name }}</b></td><td>{{ sample[:90] }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% endif %}
+
+{% endblock %}
