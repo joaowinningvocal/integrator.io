@@ -246,9 +246,23 @@ def _create_and_send(event_id, venue, result) -> int:
     return delivery_id
 
 
+BOOT_TIME = db.now_iso()
+
+
 @app.route("/health")
 def health():
-    return jsonify(ok=True, mode=db.get_setting("mode", "dry_run"))
+    """Diagnóstico. Persistence 'ephemeral' significa que o banco será perdido."""
+    with app.app_context():
+        events = db.get_db().execute("SELECT COUNT(*) AS n FROM events").fetchone()["n"]
+        return jsonify(
+            ok=True,
+            mode=db.get_setting("mode", "dry_run"),
+            db_path=str(db.DB_PATH),
+            persistence="ephemeral" if db.USING_FALLBACK_DIR else "volume",
+            stable_tokens=bool(os.getenv("HOOK_TOKEN_SALT", "").strip()),
+            events=events,
+            booted_at=BOOT_TIME,
+        )
 
 
 # ---------------------------------------------------------------- console
@@ -494,7 +508,10 @@ def webhooks():
         "v": v,
         "url": f"{base}/hook/{v['slug']}/k/{v['token']}",
     } for v in db.list_venues()]
-    return render_template("webhooks.html", rows=rows)
+    return render_template(
+        "webhooks.html", rows=rows,
+        stable_tokens=bool(os.getenv("HOOK_TOKEN_SALT", "").strip()),
+    )
 
 
 @app.route("/venues/<int:venue_id>/save", methods=["POST"])

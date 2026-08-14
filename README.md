@@ -33,6 +33,7 @@ callback de status. O envio só acontece no modo escolhido no topo do console.
    | `SMTP_HOST` | opcional, padrão `smtp.gmail.com` |
    | `SMTP_PORT` | opcional, padrão `587` |
    | `SMTP_FROM` | opcional; se omitido usa `SMTP_USER` |
+   | `HOOK_TOKEN_SALT` | torna os tokens dos webhooks estáveis — veja abaixo |
 
 5. *Settings → Networking → Generate Domain*.
 6. Confira `https://SEU-APP.up.railway.app/health` → deve responder
@@ -237,6 +238,40 @@ Simulação. É por isso que ela é segura de usar sem virar a chave para Ao viv
 4. O SMS chega no seu número. Confira o texto, o remetente e o link.
 5. Repita para a outra venue e para alguns pacotes diferentes.
 6. Só então troque para **Ao vivo** e desligue o cenário do Make.
+
+## Tokens estáveis
+
+Sem `HOOK_TOKEN_SALT`, os tokens são gerados aleatoriamente quando cada venue é
+criada. Se o banco for recriado — volume desmontado, `DATA_DIR` errado, volume
+apagado — os tokens mudam e **todas as URLs já coladas no Agni passam a responder
+401**, sem ninguém ter mexido em nada.
+
+Com o salt definido, o token de cada venue é derivado de `HMAC(salt, slug)`:
+sempre o mesmo, sobrevive a qualquer perda de banco. Defina a variável, faça o
+deploy, e **recopie as URLs uma última vez** — a partir daí elas não mudam mais.
+
+Nunca troque o salt depois: trocar equivale a rotacionar todos os tokens de uma vez.
+
+## Diagnóstico
+
+`GET /health` responde sem autenticação:
+
+```json
+{
+  "ok": true,
+  "mode": "live",
+  "db_path": "/data/hub.sqlite3",
+  "persistence": "volume",
+  "stable_tokens": true,
+  "events": 128,
+  "booted_at": "2026-08-14T19:55:09+00:00"
+}
+```
+
+- `persistence: "ephemeral"` → o banco será perdido no próximo restart. Monte o volume.
+- `stable_tokens: false` → os tokens mudam se o banco for recriado.
+- `events` caindo para zero, ou `booted_at` mudando sozinho, indica restart com
+  perda de dados.
 
 ## Migrar uma venue do Make
 

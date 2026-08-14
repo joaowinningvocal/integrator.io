@@ -3,6 +3,9 @@ Camada de dados do hub. Tudo que toca o banco passa por aqui.
 Trocar SQLite por Postgres depois = reescrever só este arquivo.
 """
 
+import base64
+import hashlib
+import hmac
 import json
 import os
 import re
@@ -15,16 +18,36 @@ from pathlib import Path
 from flask import g
 
 
+USING_FALLBACK_DIR = False
+
+
 def _resolve_data_dir() -> Path:
-    """No Railway o volume fica em /data. Local, cai pra ./data."""
-    candidate = Path(os.getenv("DATA_DIR", "/data"))
+    """
+    No Railway o volume fica em /data.
+
+    Se DATA_DIR foi definido explicitamente e não é gravável, ISSO É ERRO FATAL:
+    cair para um diretório efêmero faz o app subir normalmente e perder o banco
+    inteiro no próximo restart — incluindo os tokens dos webhooks, que passam a
+    dar 401 sem ninguém ter mexido em nada.
+    """
+    global USING_FALLBACK_DIR
+    explicit = os.getenv("DATA_DIR")
+    candidate = Path(explicit or "/data")
+
     try:
         candidate.mkdir(parents=True, exist_ok=True)
         probe = candidate / ".write-test"
         probe.write_text("ok")
         probe.unlink()
         return candidate
-    except OSError:
+    except OSError as exc:
+        if explicit:
+            raise RuntimeError(
+                f"DATA_DIR={explicit} não é gravável ({exc}). No Railway, monte um "
+                f"volume nesse caminho em Settings > Volumes. Subir sem ele faria o "
+                f"banco ser apagado a cada restart."
+            ) from exc
+        USING_FALLBACK_DIR = True
         fallback = Path(__file__).parent / "data"
         fallback.mkdir(parents=True, exist_ok=True)
         return fallback
@@ -542,6 +565,26 @@ def new_token() -> str:
     return secrets.token_urlsafe(24)
 
 
+def derived_token(slug: str) -> str:
+    """
+    Token estável derivado de HOOK_TOKEN_SALT + slug.
+
+    Com o salt definido, o token de cada venue é sempre o mesmo — sobrevive a
+    perda do banco, redeploy e recriação do volume. Sem ele, os tokens são
+    aleatórios e mudam se o banco for recriado, o que faz as URLs já coladas no
+    Agni passarem a dar 401.
+    """
+    salt = os.getenv("HOOK_TOKEN_SALT", "").strip()
+    if not salt:
+        return ""
+    digest = hmac.new(salt.encode(), slug.encode(), hashlib.sha256).digest()
+    return base64.urlsafe_b64encode(digest).decode().rstrip("=")[:32]
+
+
+def token_for(slug: str) -> str:
+    return derived_token(slug) or new_token()
+
+
 def norm_key(text: str) -> str:
     """
     Normaliza o nome do pacote pra casar apesar de caixa, acento e pontuação.
@@ -647,6 +690,17 @@ MIGRATIONS = {
 }
 
 
+def align_tokens(conn):
+    """Se HOOK_TOKEN_SALT está definido, garante que todo token seja o derivado."""
+    if not os.getenv("HOOK_TOKEN_SALT", "").strip():
+        return
+    for row in conn.execute("SELECT id, slug, token FROM venues").fetchall():
+        want = derived_token(row["slug"])
+        if want and row["token"] != want:
+            conn.execute("UPDATE venues SET token = ? WHERE id = ?", (want, row["id"]))
+    conn.commit()
+
+
 def migrate(conn):
     """Adiciona colunas que faltam. Seguro de rodar em todo boot."""
     for table, columns in MIGRATIONS.items():
@@ -688,7 +742,7 @@ def init_db():
             conn.execute(
                 "INSERT INTO venues (slug, name, token, sender_number, active, created_at) "
                 "VALUES (?, ?, ?, ?, 0, ?)",
-                (slug, name, new_token(), number, now_iso()),
+                (slug, name, token_for(slug), number, now_iso()),
             )
 
     for v in SEED_VENUES:
@@ -699,7 +753,7 @@ def init_db():
             cur = conn.execute(
                 "INSERT INTO venues (slug, name, token, sender_number, active, "
                 "pinned, always_live, created_at) VALUES (?, ?, ?, ?, 1, ?, ?, ?)",
-                (v["slug"], v["name"], new_token(), v["sender_number"],
+                (v["slug"], v["name"], token_for(v["slug"]), v["sender_number"],
                  v.get("pinned", 0), v.get("always_live", 0), now_iso()),
             )
             venue_id = cur.lastrowid
@@ -745,6 +799,7 @@ def init_db():
                 "VALUES (?, ?, ?, ?, ?)",
                 (venue_id, label, norm_key(label), price, link),
             )
+    align_tokens(conn)
     conn.commit()
     conn.close()
 

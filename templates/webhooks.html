@@ -52,6 +52,15 @@
   </div>
 </div>
 
+{% if not stable_tokens %}
+<div class="note">
+  <b>HOOK_TOKEN_SALT não está definido.</b> Os tokens abaixo são aleatórios e mudam
+  se o banco for recriado — e aí as URLs já coladas no Agni passam a responder 401.
+  Defina essa variável no Railway para que cada token seja sempre o mesmo.
+  Ao definir, os tokens mudam <b>uma última vez</b>: recopie as URLs depois.
+</div>
+{% endif %}
+
 <div class="panel">
   <h2 style="margin-bottom:12px">Se o Agni permitir header</h2>
   <p class="meter">Dá para usar a URL curta <code>/hook/&lt;slug&gt;</code> e mandar o token
