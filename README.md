@@ -121,6 +121,21 @@ Duas particularidades:
 
 A primeira regra tem **parar aqui** desligado, para o alerta chegar aos dois.
 
+### Quando a IA usa outro nome
+
+A IA nem sempre diz o nome do pacote como está no CartVIP — ela pode dizer
+"FREE ENTRY PASS" para o pacote cadastrado como "Free Ride and Entry Pass".
+Nesse caso a chamada fica como **Pacote sem link** e nada é enviado.
+
+O erro no console mostra o nome exato que a IA mandou e sugere os pacotes de
+nome parecido. Para resolver, cadastre o nome que a IA usa como um pacote
+adicional apontando para o mesmo link — é um apelido, e os dois passam a
+funcionar. Depois clique **Reenviar** na chamada, e o cliente recebe.
+
+O hub nunca escolhe um pacote parecido sozinho. "Over The Top" casaria tanto com
+o pacote de \$1200 quanto com o de \$150 — mandar o checkout errado é pior que
+não mandar link nenhum.
+
 ## Canais
 
 - **SMS** — Twilio. Vai para o telefone do cliente, do número da venue.

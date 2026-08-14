@@ -54,6 +54,13 @@
             {% endfor %}
           </select>
         </div>
+        <div class="field">
+          <label class="raw" for="rr{{ r.id }}">Destinatário desta regra</label>
+          <input type="text" id="rr{{ r.id }}" name="rule_recipient" value="{{ r.recipient or '' }}"
+                 placeholder="vazio = usa o do template">
+          <p class="hint">Tem precedência sobre o template. Permite um template só
+             atender várias rotas com destinos diferentes.</p>
+        </div>
       </div>
 
       <label>Condições</label>
@@ -129,6 +136,10 @@
         <select id="nt" name="template_name">
           {% for t in templates %}<option value="{{ t.name }}">{{ t.name }}</option>{% endfor %}
         </select>
+      </div>
+      <div class="field">
+        <label class="raw" for="nrr">Destinatário desta regra</label>
+        <input type="text" id="nrr" name="rule_recipient" placeholder="vazio = usa o do template">
       </div>
     </div>
     <label>Condições</label>

@@ -342,7 +342,7 @@ def toggle_rule(rule_id):
         abort(404)
     db.save_rule(r["venue_id"], r["name"], r["priority"], r["conditions"], r["match_all"],
                  r["channel"], r["template_name"], r["stop_after"],
-                 0 if r["active"] else 1, rule_id)
+                 0 if r["active"] else 1, rule_id, r["recipient"])
     flash(f"Regra '{r['name']}' " + ("pausada." if r["active"] else "ativada."))
     return redirect(request.referrer or url_for("home"))
 
@@ -450,6 +450,7 @@ def save_rule():
         1 if request.form.get("stop_after") else 0,
         1 if request.form.get("active") else 0,
         request.form.get("rule_id", type=int),
+        request.form.get("rule_recipient", "").strip(),
     )
     flash("Regra salva.")
     return redirect(url_for("rules", venue=venue_id))

@@ -5,6 +5,7 @@ Não envia nada. Devolve o que *seria* enviado, e o motivo quando não dá.
 Os adapters (sender.py, mailer.py) recebem o resultado disso.
 """
 
+import difflib
 import json
 import re
 
@@ -245,6 +246,31 @@ def process(venue, payload: dict) -> dict:
     return process_all(venue, payload)[0]
 
 
+def suggest_packages(venue_id: int, raw_label: str, limit: int = 3) -> list:
+    """
+    Pacotes com nome parecido, para o erro dizer o que fazer.
+    Só sugere — nunca escolhe sozinho: mandar o link do pacote errado é pior
+    que não mandar link nenhum.
+    """
+    key = db.norm_key(raw_label)
+    rows = db.list_packages(venue_id)
+    if not key or not rows:
+        return []
+
+    scored = []
+    words = set(key.split())
+    for row in rows:
+        other = row["norm_key"]
+        ratio = difflib.SequenceMatcher(None, key, other).ratio()
+        shared = words & set(other.split())
+        if shared:
+            ratio += 0.15 * len(shared)
+        scored.append((ratio, row["label"]))
+
+    scored.sort(reverse=True)
+    return [label for score, label in scored[:limit] if score > 0.45]
+
+
 def _apply_rule(venue, flat: dict, rule) -> dict:
     """Monta a mensagem de uma regra que já casou."""
     result = _base_result(venue, flat)
@@ -267,11 +293,16 @@ def _apply_rule(venue, flat: dict, rule) -> dict:
         pkg = db.find_package(venue["id"], fields["package"]) if fields["package"] else None
         if not pkg:
             result["status"] = "no_link"
-            result["note"] = (
-                f"Pacote '{fields['package']}' não existe na tabela de {venue['name']} "
-                f"(chave: {db.norm_key(fields['package'])})" if fields["package"]
-                else "O template usa {{link}} mas o payload não trouxe o campo package"
-            )
+            if fields["package"]:
+                note = (f"Pacote '{fields['package']}' não existe na tabela de "
+                        f"{venue['name']} (chave: {db.norm_key(fields['package'])})")
+                near = suggest_packages(venue["id"], fields["package"])
+                if near:
+                    note += ". Parecidos: " + ", ".join(f"'{n}'" for n in near)
+                result["note"] = note
+            else:
+                result["note"] = ("O template usa {{link}} mas o payload não trouxe "
+                                  "o campo package")
             return result
         result["link"] = pkg["link"]
         result["package_label"] = pkg["label"]
@@ -280,7 +311,10 @@ def _apply_rule(venue, flat: dict, rule) -> dict:
 
     result["body"] = render(tpl["body"], ctx)
     result["subject"] = render(tpl["subject"] or "", ctx)
-    result["recipient"] = render(tpl["recipient"] or "", ctx).strip()
+    # Destinatário: a regra tem precedência sobre o template. Assim um template
+    # só serve várias rotas com destinos diferentes.
+    raw_recipient = rule["recipient"] or tpl["recipient"] or ""
+    result["recipient"] = render(raw_recipient, ctx).strip()
 
     if rule["channel"] == "sms":
         result["sms_body"] = result["body"]

@@ -100,6 +100,7 @@ CREATE TABLE IF NOT EXISTS rules (
     match_all     INTEGER NOT NULL DEFAULT 1,
     channel       TEXT NOT NULL DEFAULT 'sms',
     template_name TEXT NOT NULL,
+    recipient     TEXT NOT NULL DEFAULT '',
     stop_after    INTEGER NOT NULL DEFAULT 1,
     active        INTEGER NOT NULL DEFAULT 1
 );
@@ -216,7 +217,7 @@ PENDING_VENUES = [
 ]
 
 # Slugs que não devem existir. Removidos no boot se não tiverem histórico.
-RETIRED_SLUGS = ("gobest", "james-wv")
+RETIRED_SLUGS = ("james-wv",)
 
 YPSILANTI_TEMPLATE = """Hey there, {{first_name|there}}
 This is the link for you to book your reservation:
@@ -288,7 +289,64 @@ EMERGENCY_JASON = """Jason, POSSIBLE EMERGENCY AT {{club_name}}
 The AI detected the following incident:
 {{report}}"""
 
+GOBEST_INQUIRY = """New GoBEST inquiry — {{inquiry_type}}
+
+Name: {{caller_name|not provided}}
+Company: {{company_name|not provided}}
+Phone: {{caller_phone|not provided}}
+E-mail: {{caller_email|not provided}}
+
+What they need:
+{{summary|not provided}}
+
+Handled by the AI receptionist. Caller ID: {{phone|unknown}}"""
+
 SEED_VENUES = [
+    {
+        "slug": "gobest",
+        "name": "GoBEST (triagem)",
+        "sender_number": "+17027283109",
+        "template": None,
+        "packages": [],
+        "templates": [
+            ("gobest_inquiry", "GoBEST inquiry — {{inquiry_type}} — {{caller_name|no name}}",
+             "", GOBEST_INQUIRY),
+        ],
+        # Cada rota do one-sheet vira uma regra. O destinatário está na regra,
+        # então um template só atende todas.
+        "rules": [
+            ("Marketing / vendas", 10,
+             [{"field": "inquiry_type", "op": "equals", "value": "Marketing or Sales"}],
+             1, "email", "gobest_inquiry", 1, "marketing@gobestbiz.com"),
+            ("Web / design gráfico", 20,
+             [{"field": "inquiry_type", "op": "equals", "value": "Web or Graphic Design"}],
+             1, "email", "gobest_inquiry", 1, "submit@gobestvip.com"),
+            ("Social / reputação", 30,
+             [{"field": "inquiry_type", "op": "equals", "value": "Social Media or Reputation"}],
+             1, "email", "gobest_inquiry", 1, "social@gobestvip.com"),
+            ("Solicitação de venue parceira", 40,
+             [{"field": "inquiry_type", "op": "equals", "value": "Marketing Request from Powered Venue"}],
+             1, "email", "gobest_inquiry", 1, "submit@gobestvip.com"),
+            ("Pedidos BundlesAdvantage", 50,
+             [{"field": "inquiry_type", "op": "equals", "value": "BundlesAdvantage Order"}],
+             1, "email", "gobest_inquiry", 1, "orders@myordersvip.com"),
+            ("Pedidos GearMeUp", 60,
+             [{"field": "inquiry_type", "op": "equals", "value": "GearMeUp Order"}],
+             1, "email", "gobest_inquiry", 1, "alyssa@gobestbiz.com"),
+            ("Problema com pedido", 70,
+             [{"field": "inquiry_type", "op": "equals", "value": "Order Problem or Complaint"}],
+             1, "email", "gobest_inquiry", 1, "dawn@empowhereq.com"),
+            ("Multi-unidade / contrato", 80,
+             [{"field": "inquiry_type", "op": "equals", "value": "Multi-location or Contract Pricing"}],
+             1, "email", "gobest_inquiry", 1, "adia@empowhereq.com"),
+            ("Currículo / emprego", 90,
+             [{"field": "inquiry_type", "op": "equals", "value": "Employment"}],
+             1, "email", "gobest_inquiry", 1, "careers@gobestbiz.com"),
+            # Fallback: qualquer coisa que não casou vai para a caixa geral.
+            ("Geral (fallback)", 999, [], 1, "email", "gobest_inquiry", 1,
+             "elevate@gobestbiz.com"),
+        ],
+    },
     {
         "slug": "emergency",
         "name": "Emergência (todas as venues)",
@@ -416,6 +474,8 @@ SEED_VENUES = [
         "template": HUSTLER_TEMPLATE,
         "packages": [
             ("Free Ride and Entry Pass", "$0", "https://app.cartvip.com/vegashustlerclub/package/free-ride-and-entry-pass-32/checkout"),
+            # Apelido: a IA costuma dizer o nome curto.
+            ("Free Entry Pass", "$0", "https://app.cartvip.com/vegashustlerclub/package/free-ride-and-entry-pass-32/checkout"),
             ("$20 Special", "$20", "https://app.cartvip.com/vegashustlerclub/package/20-special-1/checkout"),
             ("Just the Two of Us", "$150", "https://app.cartvip.com/vegashustlerclub/package/just-the-two-of-us-30/checkout"),
             ("Couch with a View", "$250", "https://app.cartvip.com/vegashustlerclub/package/couch-with-a-view-25/checkout"),
@@ -457,6 +517,8 @@ SEED_VENUES = [
         "template": KINGS_TEMPLATE,
         "packages": [
             ("Free Ride and Free Entry", "$0", "https://app.cartvip.com/kingsofhustler/package/free-ride-and-free-entry-40/checkout"),
+            ("Free Entry Pass", "$0", "https://app.cartvip.com/kingsofhustler/package/free-ride-and-free-entry-40/checkout"),
+            ("Free Entry & Ride", "$0", "https://app.cartvip.com/kingsofhustler/package/free-ride-and-free-entry-40/checkout"),
             ("Showstopper", "$50", "https://app.cartvip.com/kingsofhustler/package/showstopper-41/checkout"),
             ("Bad Mom's Club", "$300", "https://app.cartvip.com/kingsofhustler/package/bad-moms-club-33/checkout"),
             ("Champagne with a King", "$400", "https://app.cartvip.com/kingsofhustler/package/champagne-with-a-king-13/checkout"),
@@ -576,6 +638,7 @@ MIGRATIONS = {
     ],
     "rules": [
         ("stop_after", "INTEGER NOT NULL DEFAULT 1"),
+        ("recipient",  "TEXT NOT NULL DEFAULT ''"),
     ],
     "venues": [
         ("pinned",      "INTEGER NOT NULL DEFAULT 0"),
@@ -662,15 +725,19 @@ def init_db():
                 "VALUES (?, ?, ?, ?, ?)",
                 (venue_id, name, subject, recipient, body),
             )
-        for name, prio, conds, match_all, channel, tpl, stop in v.get("rules", []):
+        for rule in v.get("rules", []):
+            name, prio, conds, match_all, channel, tpl, stop = rule[:7]
+            recipient = rule[7] if len(rule) > 7 else ""
             exists = conn.execute(
                 "SELECT 1 FROM rules WHERE venue_id = ? AND name = ?", (venue_id, name)
             ).fetchone()
             if not exists:
                 conn.execute(
                     "INSERT INTO rules (venue_id, name, priority, conditions, match_all, "
-                    "channel, template_name, stop_after, active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)",
-                    (venue_id, name, prio, json.dumps(conds), match_all, channel, tpl, stop),
+                    "channel, template_name, stop_after, active, recipient) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?)",
+                    (venue_id, name, prio, json.dumps(conds), match_all, channel, tpl,
+                     stop, recipient),
                 )
         for label, price, link in v["packages"]:
             conn.execute(
@@ -821,19 +888,20 @@ def get_rule(rule_id: int):
 
 
 def save_rule(venue_id, name, priority, conditions, match_all, channel,
-              template_name, stop_after, active, rule_id=None):
+              template_name, stop_after, active, rule_id=None, recipient=""):
     db = get_db()
     args = (name, int(priority), conditions, int(match_all), channel,
-            template_name, int(stop_after), int(active))
+            template_name, int(stop_after), int(active), recipient or "")
     if rule_id:
         db.execute(
             "UPDATE rules SET name=?, priority=?, conditions=?, match_all=?, channel=?, "
-            "template_name=?, stop_after=?, active=? WHERE id=?", (*args, rule_id))
+            "template_name=?, stop_after=?, active=?, recipient=? WHERE id=?",
+            (*args, rule_id))
     else:
         db.execute(
             "INSERT INTO rules (name, priority, conditions, match_all, channel, "
-            "template_name, stop_after, active, venue_id) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", (*args, venue_id))
+            "template_name, stop_after, active, recipient, venue_id) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (*args, venue_id))
     db.commit()
 
 
