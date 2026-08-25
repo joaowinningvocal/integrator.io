@@ -398,16 +398,16 @@ SEED_VENUES = [
         # Os rótulos são os valores exatos que os filtros do Make usam, porque é
         # isso que a IA manda no campo package. Os links vêm da lista do CartVIP.
         "packages": [
-            ("Cut the Karaoke Line", "", "https://app.cartvip.com/cats-nola/package/cut-the-karaoke-line-71/checkout"),
-            ("Swingin' Cat's Package", "", "https://app.cartvip.com/cats-nola/package/swingin-cats-72/checkout"),
-            ("Tom Cats Bachelor Party Package", "", "https://app.cartvip.com/cats-nola/package/tom-cats-bachelor-party-74/checkout"),
-            ("Frisky Felines Bachelorette Party Package", "", "https://app.cartvip.com/cats-nola/package/frisky-felines-bachelorette-75/checkout"),
-            ("Cool Cats Party Package (Sun - Thurs)", "", "https://app.cartvip.com/cats-nola/package/cool-cats-balcony-bar-76/checkout"),
-            ("Wild Cats Weekend (Fri-Sat)", "", "https://app.cartvip.com/cats-nola/package/wild-cats-balcony-bar-77/checkout"),
-            ("Top Cats Party Package (Sun - Thurs)", "", "https://app.cartvip.com/cats-nola/package/top-cats-balcony-bar-73/checkout"),
-            ("Purrfect-Kitty Party Package (Fri - Sat)", "", "https://app.cartvip.com/cats-nola/package/purr-fect-kitty-balcony-bar-78/checkout"),
-            ("Spicy Cats Soiree (Sun-Thurs)", "", "https://app.cartvip.com/cats-nola/package/spicy-cats-soiree-full-club-79/checkout"),
-            ("Mind-Blowing Pussy Cat Party (Fri-Sat)", "", "https://app.cartvip.com/cats-nola/package/mind-blowing-pussy-cat-full-club-80/checkout"),
+            ("Cut the Karaoke Line", "", "https://app.cartvip.com/cats-nola/package/cut-the-karaoke-line-71/checkout?aff=hcm"),
+            ("Swingin' Cat's Package", "", "https://app.cartvip.com/cats-nola/package/swingin-cats-72/checkout?aff=hcm"),
+            ("Tom Cats Bachelor Party Package", "", "https://app.cartvip.com/cats-nola/package/tom-cats-bachelor-party-74/checkout?aff=hcm"),
+            ("Frisky Felines Bachelorette Party Package", "", "https://app.cartvip.com/cats-nola/package/frisky-felines-bachelorette-75/checkout?aff=hcm"),
+            ("Cool Cats Party Package (Sun - Thurs)", "", "https://app.cartvip.com/cats-nola/package/cool-cats-balcony-bar-76/checkout?aff=hcm"),
+            ("Wild Cats Weekend (Fri-Sat)", "", "https://app.cartvip.com/cats-nola/package/wild-cats-balcony-bar-77/checkout?aff=hcm"),
+            ("Top Cats Party Package (Sun - Thurs)", "", "https://app.cartvip.com/cats-nola/package/top-cats-balcony-bar-73/checkout?aff=hcm"),
+            ("Purrfect-Kitty Party Package (Fri - Sat)", "", "https://app.cartvip.com/cats-nola/package/purr-fect-kitty-balcony-bar-78/checkout?aff=hcm"),
+            ("Spicy Cats Soiree (Sun-Thurs)", "", "https://app.cartvip.com/cats-nola/package/spicy-cats-soiree-full-club-79/checkout?aff=hcm"),
+            ("Mind-Blowing Pussy Cat Party (Fri-Sat)", "", "https://app.cartvip.com/cats-nola/package/mind-blowing-pussy-cat-full-club-80/checkout?aff=hcm"),
         ],
     },
     {
@@ -416,19 +416,20 @@ SEED_VENUES = [
         "sender_number": "+15044746323",
         "template": BARELY_LEGAL_TEMPLATE,
         "packages": [
-            ("VIP One Time Admission", "", "https://app.cartvip.com/barely-legal-new-orleans/package/vip-one-time-admission-66/checkout"),
-            ("Entry, Dance & Drink SPECIAL", "", "https://app.cartvip.com/barely-legal-new-orleans/package/entry-drink-couch-dance-67/checkout"),
-            ("Couples Package", "", "https://app.cartvip.com/barely-legal-new-orleans/package/couples-package-58/checkout"),
-            ("Silver Party", "", "https://app.cartvip.com/barely-legal-new-orleans/package/silver-party-59/checkout"),
-            ("Dance Party", "", "https://app.cartvip.com/barely-legal-new-orleans/package/dance-party-60/checkout"),
-            ("Gold Party", "", "https://app.cartvip.com/barely-legal-new-orleans/package/gold-party-61/checkout"),
-            ("Wild Party", "", "https://app.cartvip.com/barely-legal-new-orleans/package/wild-party-62/checkout"),
-            ("Platinum Party", "", "https://app.cartvip.com/barely-legal-new-orleans/package/platinum-party-63/checkout"),
-            ("Executive Party", "", "https://app.cartvip.com/barely-legal-new-orleans/package/the-executive-64/checkout"),
-            ("Royal Party", "", "https://app.cartvip.com/barely-legal-new-orleans/package/the-royal-65/checkout"),
-            ("Booth & Bar Reservation (up to 5 guests)", "$300", "https://app.cartvip.com/barely-legal-new-orleans/package/booth-bar-300-68/checkout"),
-            ("Booth & Bar Reservation (up to 10 guests)", "$550", "https://app.cartvip.com/barely-legal-new-orleans/package/booth-bar-550-69/checkout"),
-            ("Booth & Bar Reservation (up to 15 guests)", "$800", "https://app.cartvip.com/barely-legal-new-orleans/package/booth-bar-800-70/checkout"),
+            ("Free Entry & Drink (Limited Time Offer)", "$0", "https://app.cartvip.com/barely-legal-new-orleans/package/free-entry-drink-limited-time-offer-91/checkout?aff=hbl"),
+            ("VIP One Time Admission", "", "https://app.cartvip.com/barely-legal-new-orleans/package/vip-one-time-admission-66/checkout?aff=hbl"),
+            ("Entry, Dance & Drink SPECIAL", "", "https://app.cartvip.com/barely-legal-new-orleans/package/entry-drink-couch-dance-67/checkout?aff=hbl"),
+            ("Couples Package", "", "https://app.cartvip.com/barely-legal-new-orleans/package/couples-package-58/checkout?aff=hbl"),
+            ("Silver Party", "", "https://app.cartvip.com/barely-legal-new-orleans/package/silver-party-59/checkout?aff=hbl"),
+            ("Dance Party", "", "https://app.cartvip.com/barely-legal-new-orleans/package/dance-party-60/checkout?aff=hbl"),
+            ("Gold Party", "", "https://app.cartvip.com/barely-legal-new-orleans/package/gold-party-61/checkout?aff=hbl"),
+            ("Wild Party", "", "https://app.cartvip.com/barely-legal-new-orleans/package/wild-party-62/checkout?aff=hbl"),
+            ("Platinum Party", "", "https://app.cartvip.com/barely-legal-new-orleans/package/platinum-party-63/checkout?aff=hbl"),
+            ("Executive Party", "", "https://app.cartvip.com/barely-legal-new-orleans/package/the-executive-64/checkout?aff=hbl"),
+            ("Royal Party", "", "https://app.cartvip.com/barely-legal-new-orleans/package/the-royal-65/checkout?aff=hbl"),
+            ("Booth & Bar Reservation (up to 5 guests)", "$300", "https://app.cartvip.com/barely-legal-new-orleans/package/booth-bar-300-68/checkout?aff=hbl"),
+            ("Booth & Bar Reservation (up to 10 guests)", "$550", "https://app.cartvip.com/barely-legal-new-orleans/package/booth-bar-550-69/checkout?aff=hbl"),
+            ("Booth & Bar Reservation (up to 15 guests)", "$800", "https://app.cartvip.com/barely-legal-new-orleans/package/booth-bar-800-70/checkout?aff=hbl"),
         ],
     },
     {
@@ -437,17 +438,18 @@ SEED_VENUES = [
         "sender_number": "+15045141440",
         "template": HUSTLER_NOLA_TEMPLATE,
         "packages": [
-            ("VIP One Time Admission", "", "https://app.cartvip.com/hustler-club-new-orleans/package/vip-one-time-admission-81/checkout"),
-            ("Entry, Drink & Lap Dance SPECIAL", "", "https://app.cartvip.com/hustler-club-new-orleans/package/entry-drink-couch-dance-83/checkout"),
-            ("Couples Package", "", "https://app.cartvip.com/hustler-club-new-orleans/package/couples-package-82/checkout"),
+            ("Free Entry & Drink (Limited Time Offer)", "$0", "https://app.cartvip.com/hustler-club-new-orleans/package/free-entry-drink-limited-time-offer-92/checkout?aff=hnola"),
+            ("VIP One Time Admission", "", "https://app.cartvip.com/hustler-club-new-orleans/package/vip-one-time-admission-81/checkout?aff=hnola"),
+            ("Entry, Drink & Lap Dance SPECIAL", "", "https://app.cartvip.com/hustler-club-new-orleans/package/entry-drink-couch-dance-83/checkout?aff=hnola"),
+            ("Couples Package", "", "https://app.cartvip.com/hustler-club-new-orleans/package/couples-package-82/checkout?aff=hnola"),
             # Existe na lista do CartVIP, mas não tinha rota no Make.
-            ("Silver Party", "", "https://app.cartvip.com/hustler-club-new-orleans/package/silver-party-84/checkout"),
-            ("The Wild Party", "", "https://app.cartvip.com/hustler-club-new-orleans/package/the-wild-party-87/checkout"),
-            ("Gold Party", "", "https://app.cartvip.com/hustler-club-new-orleans/package/gold-party-85/checkout"),
-            ("Platinum Party", "", "https://app.cartvip.com/hustler-club-new-orleans/package/platinum-party-86/checkout"),
-            ("The Wildest Party", "", "https://app.cartvip.com/hustler-club-new-orleans/package/the-wildest-party-88/checkout"),
-            ("The Executive Party", "", "https://app.cartvip.com/hustler-club-new-orleans/package/the-executive-party-89/checkout"),
-            ("The Royal Party", "", "https://app.cartvip.com/hustler-club-new-orleans/package/the-royal-party-90/checkout"),
+            ("Silver Party", "", "https://app.cartvip.com/hustler-club-new-orleans/package/silver-party-84/checkout?aff=hnola"),
+            ("The Wild Party", "", "https://app.cartvip.com/hustler-club-new-orleans/package/the-wild-party-87/checkout?aff=hnola"),
+            ("Gold Party", "", "https://app.cartvip.com/hustler-club-new-orleans/package/gold-party-85/checkout?aff=hnola"),
+            ("Platinum Party", "", "https://app.cartvip.com/hustler-club-new-orleans/package/platinum-party-86/checkout?aff=hnola"),
+            ("The Wildest Party", "", "https://app.cartvip.com/hustler-club-new-orleans/package/the-wildest-party-88/checkout?aff=hnola"),
+            ("The Executive Party", "", "https://app.cartvip.com/hustler-club-new-orleans/package/the-executive-party-89/checkout?aff=hnola"),
+            ("The Royal Party", "", "https://app.cartvip.com/hustler-club-new-orleans/package/the-royal-party-90/checkout?aff=hnola"),
         ],
     },
     {
@@ -496,15 +498,15 @@ SEED_VENUES = [
         "sender_number": "+17029970961",
         "template": HUSTLER_TEMPLATE,
         "packages": [
-            ("Free Ride and Entry Pass", "$0", "https://app.cartvip.com/vegashustlerclub/package/free-ride-and-entry-pass-32/checkout"),
+            ("Free Ride and Entry Pass", "$0", "https://app.cartvip.com/vegashustlerclub/package/free-ride-entry-drink-32/checkout?aff=hlv"),
             # Apelido: a IA costuma dizer o nome curto.
-            ("Free Entry Pass", "$0", "https://app.cartvip.com/vegashustlerclub/package/free-ride-and-entry-pass-32/checkout"),
-            ("$20 Special", "$20", "https://app.cartvip.com/vegashustlerclub/package/20-special-1/checkout"),
-            ("Just the Two of Us", "$150", "https://app.cartvip.com/vegashustlerclub/package/just-the-two-of-us-30/checkout"),
-            ("Couch with a View", "$250", "https://app.cartvip.com/vegashustlerclub/package/couch-with-a-view-25/checkout"),
-            ("Blowout Fest", "$450", "https://app.cartvip.com/vegashustlerclub/package/blowout-fest-26/checkout"),
-            ("What Happens In Vegas", "$800", "https://app.cartvip.com/vegashustlerclub/package/what-happens-in-vegas-28/checkout"),
-            ("Guaranteed Over The Top Experience", "$1200", "https://app.cartvip.com/vegashustlerclub/package/over-the-top-29/checkout"),
+            ("Free Entry Pass", "$0", "https://app.cartvip.com/vegashustlerclub/package/free-ride-entry-drink-32/checkout?aff=hlv"),
+            ("$20 Special", "$20", "https://app.cartvip.com/vegashustlerclub/package/20-special-1/checkout?aff=hlv"),
+            ("Just the Two of Us", "$150", "https://app.cartvip.com/vegashustlerclub/package/just-the-two-of-us-30/checkout?aff=hlv"),
+            ("Couch with a View", "$250", "https://app.cartvip.com/vegashustlerclub/package/couch-with-a-view-25/checkout?aff=hlv"),
+            ("Blowout Fest", "$450", "https://app.cartvip.com/vegashustlerclub/package/blowout-fest-26/checkout?aff=hlv"),
+            ("What Happens In Vegas", "$800", "https://app.cartvip.com/vegashustlerclub/package/what-happens-in-vegas-28/checkout?aff=hlv"),
+            ("Guaranteed Over The Top Experience", "$1200", "https://app.cartvip.com/vegashustlerclub/package/guaranteed-over-the-top-experience-29/checkout?aff=hlv"),
         ],
     },
     {
@@ -539,17 +541,17 @@ SEED_VENUES = [
         "sender_number": "+17025471904",
         "template": KINGS_TEMPLATE,
         "packages": [
-            ("Free Ride and Free Entry", "$0", "https://app.cartvip.com/kingsofhustler/package/free-ride-and-free-entry-40/checkout"),
-            ("Free Entry Pass", "$0", "https://app.cartvip.com/kingsofhustler/package/free-ride-and-free-entry-40/checkout"),
-            ("Free Entry & Ride", "$0", "https://app.cartvip.com/kingsofhustler/package/free-ride-and-free-entry-40/checkout"),
-            ("Showstopper", "$50", "https://app.cartvip.com/kingsofhustler/package/showstopper-41/checkout"),
-            ("Bad Mom's Club", "$300", "https://app.cartvip.com/kingsofhustler/package/bad-moms-club-33/checkout"),
-            ("Champagne with a King", "$400", "https://app.cartvip.com/kingsofhustler/package/champagne-with-a-king-13/checkout"),
-            ("Rosè All Day", "$700", "https://app.cartvip.com/kingsofhustler/package/rose-all-day-35/checkout"),
-            ("Screaming Orgasm", "$900", "https://app.cartvip.com/kingsofhustler/package/screaming-orgasm-36/checkout"),
-            ("One Last Hoerahh", "$1400", "https://app.cartvip.com/kingsofhustler/package/one-last-hoerahh-37/checkout"),
-            ("Bride and Boujee", "$1800", "https://app.cartvip.com/kingsofhustler/package/bride-and-boujee-38/checkout"),
-            ("One King Forever!", "$2000", "https://app.cartvip.com/kingsofhustler/package/one-king-forever-39/checkout"),
+            ("Free Ride and Free Entry", "$0", "https://app.cartvip.com/kingsofhustler/package/free-ride-and-free-entry-40/checkout?aff=acekh"),
+            ("Free Entry Pass", "$0", "https://app.cartvip.com/kingsofhustler/package/free-ride-and-free-entry-40/checkout?aff=acekh"),
+            ("Free Entry & Ride", "$0", "https://app.cartvip.com/kingsofhustler/package/free-ride-and-free-entry-40/checkout?aff=acekh"),
+            ("Showstopper", "$50", "https://app.cartvip.com/kingsofhustler/package/showstopper-41/checkout?aff=acekh"),
+            ("Bad Mom's Club", "$300", "https://app.cartvip.com/kingsofhustler/package/bad-moms-club-33/checkout?aff=acekh"),
+            ("Champagne with a King", "$400", "https://app.cartvip.com/kingsofhustler/package/champagne-with-a-king-13/checkout?aff=acekh"),
+            ("Rosè All Day", "$700", "https://app.cartvip.com/kingsofhustler/package/rose-all-day-35/checkout?aff=acekh"),
+            ("Screaming Orgasm", "$900", "https://app.cartvip.com/kingsofhustler/package/screaming-orgasm-36/checkout?aff=acekh"),
+            ("One Last Hoerahh", "$1400", "https://app.cartvip.com/kingsofhustler/package/one-last-hoerahh-37/checkout?aff=acekh"),
+            ("Bride and Boujee", "$1800", "https://app.cartvip.com/kingsofhustler/package/bride-and-boujee-38/checkout?aff=acekh"),
+            ("One King Forever!", "$2000", "https://app.cartvip.com/kingsofhustler/package/one-king-forever-39/checkout?aff=acekh"),
         ],
     },
 ]
@@ -794,9 +796,13 @@ def init_db():
                      stop, recipient),
                 )
         for label, price, link in v["packages"]:
+            # Atualiza o link se o pacote já existe. Sem isso, uma troca de link
+            # no seed não chegaria ao banco de produção, que já tem a linha.
             conn.execute(
-                "INSERT OR IGNORE INTO packages (venue_id, label, norm_key, price, link) "
-                "VALUES (?, ?, ?, ?, ?)",
+                "INSERT INTO packages (venue_id, label, norm_key, price, link) "
+                "VALUES (?, ?, ?, ?, ?) "
+                "ON CONFLICT(venue_id, norm_key) DO UPDATE SET "
+                "label = excluded.label, price = excluded.price, link = excluded.link",
                 (venue_id, label, norm_key(label), price, link),
             )
     align_tokens(conn)
