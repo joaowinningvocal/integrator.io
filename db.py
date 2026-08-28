@@ -324,7 +324,34 @@ What they need:
 
 Handled by the AI receptionist. Caller ID: {{phone|unknown}}"""
 
+PROMO_TRUCK_TEMPLATE = """PROMO TRUCK LEAD - {{club_name|Hustler Club Las Vegas}}
+
+Name: {{name|not given}}
+Phone: {{phone|not given}}
+Email: {{email|not given}}
+
+Interest: {{interest_level|not stated}}
+Payment: {{payment_method|not stated}}
+Available: {{availability|not stated}}
+
+Notes: {{notes|none}}"""
+
 SEED_VENUES = [
+    {
+        "slug": "promo-truck",
+        "name": "Promo truck (lead de venda)",
+        "sender_number": "+17029970961",
+        "template": None,
+        "packages": [],
+        "pinned": 1,
+        "templates": [
+            ("promo_truck_lead", "", "+17253121048", PROMO_TRUCK_TEMPLATE),
+        ],
+        "rules": [
+            ("Lead do promo truck", 10, [], 1, "sms", "promo_truck_lead", 1,
+             "+17253121048"),
+        ],
+    },
     {
         "slug": "gobest",
         "name": "GoBEST (triagem)",
