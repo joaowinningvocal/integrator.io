@@ -49,8 +49,16 @@
             <option value="telnyx" {{ 'selected' if row.provider == 'telnyx' }}>Telnyx</option>
           </select>
         </div>
-        <button class="btn ghost" type="submit">Trocar provedor</button>
+        <div>
+          <label for="tnum-{{ v.id }}">Número Telnyx</label>
+          <input type="text" id="tnum-{{ v.id }}" name="telnyx_number"
+                 value="{{ row.telnyx_number or '' }}" placeholder="+1...">
+        </div>
+        <button class="btn ghost" type="submit">Salvar</button>
       </div>
+      <p class="hint">O SMS sai do número da conta usada: Twilio manda do
+         <b>{{ v.sender_number or '—' }}</b>, Telnyx do
+         <b>{{ row.telnyx_number or '(não cadastrado)' }}</b>.</p>
     </form>
 
     <form method="post" action="{{ url_for('rotate', venue_id=v.id) }}" style="margin-top:8px">

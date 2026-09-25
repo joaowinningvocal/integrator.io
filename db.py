@@ -63,10 +63,12 @@ CREATE TABLE IF NOT EXISTS venues (
     name          TEXT NOT NULL,
     token         TEXT NOT NULL,
     sender_number TEXT,
+    sender_telnyx TEXT NOT NULL DEFAULT '',
     active        INTEGER NOT NULL DEFAULT 1,
     pinned        INTEGER NOT NULL DEFAULT 0,
     always_live   INTEGER NOT NULL DEFAULT 0,
     provider      TEXT NOT NULL DEFAULT '',
+    telnyx_number TEXT NOT NULL DEFAULT '',
     created_at    TEXT NOT NULL
 );
 
@@ -238,6 +240,9 @@ Recording:
 
 # Venues sem tabela de pacotes ainda. Criadas desligadas: o webhook responde 403
 # e registra, mas não envia, até você cadastrar pacotes e ligar.
+# Numeros da Telnyx, por slug. O Kalamazoo nao tem equivalente ainda.
+TELNYX_NUMBERS = {'hustler-lv': '+17028672822', 'kings': '+17028277987', 'winning-realty': '+17027604971', 'gobest': '+17023740367', 'hustler-nola': '+15047665586', 'barely-legal-nola': '+15047665516', 'cats-meow': '+15047665479', 'dejavu-ypsilanti': '+17343718726', 'dejavu-stockton': '+19162602738', 'dejavu-kalamazoo': '+12697755328', 'emergency': '+17028672822', 'promo-truck': '+17028672822'}
+
 PENDING_VENUES = [
 ]
 
@@ -717,7 +722,8 @@ MIGRATIONS = {
     "venues": [
         ("pinned",      "INTEGER NOT NULL DEFAULT 0"),
         ("always_live", "INTEGER NOT NULL DEFAULT 0"),
-        ("provider",    "TEXT NOT NULL DEFAULT ''"),
+        ("provider",      "TEXT NOT NULL DEFAULT ''"),
+        ("sender_telnyx", "TEXT NOT NULL DEFAULT ''"),
     ],
 }
 
@@ -835,6 +841,12 @@ def init_db():
                 "label = excluded.label, price = excluded.price, link = excluded.link",
                 (venue_id, label, norm_key(label), price, link),
             )
+    for slug, numero in TELNYX_NUMBERS.items():
+        conn.execute(
+            "UPDATE venues SET telnyx_number = ? WHERE slug = ? AND telnyx_number = ''",
+            (numero, slug),
+        )
+
     align_tokens(conn)
     conn.commit()
     conn.close()
@@ -873,13 +885,51 @@ def get_venue(venue_id: int):
     return get_db().execute("SELECT * FROM venues WHERE id = ?", (venue_id,)).fetchone()
 
 
-def update_venue(venue_id: int, name: str, sender_number: str, active: int):
+def update_venue(venue_id: int, name: str, sender_number: str, active: int,
+                 sender_telnyx: str = None):
     db = get_db()
-    db.execute(
-        "UPDATE venues SET name = ?, sender_number = ?, active = ? WHERE id = ?",
-        (name, sender_number, active, venue_id),
-    )
+    if sender_telnyx is None:
+        db.execute(
+            "UPDATE venues SET name = ?, sender_number = ?, active = ? WHERE id = ?",
+            (name, sender_number, active, venue_id),
+        )
+    else:
+        db.execute(
+            "UPDATE venues SET name = ?, sender_number = ?, sender_telnyx = ?, "
+            "active = ? WHERE id = ?",
+            (name, sender_number, sender_telnyx, active, venue_id),
+        )
     db.commit()
+
+
+def remetente(venue, provedor: str) -> str:
+    """
+    O numero de origem depende do provedor: a Telnyx so envia por numeros da
+    conta Telnyx, e a Twilio so por numeros da conta Twilio.
+    Sem numero Telnyx cadastrado, devolve vazio — melhor falhar visivel do que
+    tentar enviar por um numero que nao e da conta.
+    """
+    if provedor == "telnyx":
+        return venue["sender_telnyx"] or ""
+    return venue["sender_number"] or ""
+
+
+def set_telnyx_number(venue_id: int, numero: str):
+    db = get_db()
+    db.execute("UPDATE venues SET telnyx_number = ? WHERE id = ?",
+               (numero or "", venue_id))
+    db.commit()
+
+
+def remetente(venue, provedor: str) -> str:
+    """
+    O numero de origem depende do provedor: cada conta so pode enviar pelos
+    proprios numeros. Se a venue nao tem numero Telnyx cadastrado, devolve
+    vazio — quem chama trata como erro em vez de tentar com o numero errado.
+    """
+    if provedor == "telnyx":
+        return venue["telnyx_number"] or ""
+    return venue["sender_number"] or ""
 
 
 def set_venue_provider(venue_id: int, provider: str):

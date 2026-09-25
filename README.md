@@ -166,9 +166,30 @@ URL em cada mensagem — não precisa configurar nada no portal da Telnyx.
 2. Troque **uma venue** para Telnyx e observe um dia. Confira a coluna Via e se
    os status chegam a `delivered`.
 3. Repita para as demais, ou troque o padrão global de uma vez.
-4. Os números precisam existir e estar habilitados para SMS **na conta Telnyx** —
-   um número da Twilio não envia pela Telnyx. Erro `40301` significa exatamente
-   isso.
+4. Cada venue tem **dois números**: o da Twilio (`sender_number`) e o da Telnyx
+   (`telnyx_number`). O SMS sai do número da conta que está enviando — uma conta
+   não pode usar o número da outra. Ambos ficam na aba Venues.
+
+Se a venue estiver marcada como Telnyx e não tiver número Telnyx cadastrado, o
+hub **não tenta enviar**: registra a entrega como `failed` dizendo o que falta.
+É melhor que receber `40301` da Telnyx depois de já ter cobrado a tentativa.
+
+### Números por venue
+
+| Venue | Twilio | Telnyx |
+|---|---|---|
+| Hustler Las Vegas | +17029970961 | +17028672822 |
+| Kings of Hustler | +17025471904 | +17028277987 |
+| Hustler New Orleans | +15045141440 | +15047665586 |
+| Barely Legal NOLA | +15044746323 | +15047665516 |
+| Cats Meow Karaoke | +15046819283 | +15047665479 |
+| Deja Vu Ypsilanti | +17348965038 | +17343718726 |
+| Deja Vu Stockton | +19163504781 | +19162602738 |
+| Deja Vu Kalamazoo | +12697754582 | +12697755328 |
+| GoBEST | +17027283109 | +17023740367 |
+| Winning Realty (Lily) | +17029049574 | +17027604971 |
+
+Emergência e promo truck usam o número do Hustler Las Vegas nos dois provedores.
 
 ## Canais
 

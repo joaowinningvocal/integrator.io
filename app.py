@@ -271,8 +271,25 @@ def _create_and_send(event_id, venue, result) -> int:
         mailer.dispatch(app, delivery_id)
     else:
         provedor = resolver_provedor(venue, result)
+        origem = db.remetente(venue, provedor)
+
+        if not origem:
+            # Sem numero naquele provedor: registra a falha em vez de tentar
+            # enviar pelo numero do outro, que a conta recusaria (40301/21606).
+            delivery_id = db.create_delivery(
+                event_id, venue["id"], result["customer_phone"], "",
+                result["body"], channel="sms", rule_name=result["rule_name"],
+                status="failed",
+            )
+            db.update_delivery(
+                delivery_id, provider=provedor, error_code="no_sender",
+                error_message=(f"{venue['name']} nao tem numero cadastrado na "
+                               f"{provedor}. Cadastre em Venues."),
+            )
+            return delivery_id
+
         delivery_id = db.create_delivery(
-            event_id, venue["id"], result["customer_phone"], result["sms_from"],
+            event_id, venue["id"], result["customer_phone"], origem,
             result["body"], channel="sms", rule_name=result["rule_name"],
         )
         db.update_delivery(delivery_id, provider=provedor)
@@ -535,6 +552,7 @@ def venues():
             "packages": db.list_packages(v["id"]),
             "template": db.get_template(v["id"], "booking_link"),
             "provider": v["provider"],
+            "telnyx_number": v["telnyx_number"],
         })
     return render_template("venues.html", rows=rows)
 
@@ -744,11 +762,18 @@ def telnyx_status(token):
 @login_required
 def set_provider(venue_id):
     escolha = request.form.get("provider", "")
+    numero = request.form.get("telnyx_number", "").strip()
+    if numero or "telnyx_number" in request.form:
+        db.set_telnyx_number(venue_id, db.to_e164(numero) or numero)
     if escolha in ("", "twilio", "telnyx"):
         db.set_venue_provider(venue_id, escolha)
         v = db.get_venue(venue_id)
         rotulo = escolha or "padrão global"
-        flash(f"{v['name']}: SMS agora via {rotulo}.")
+        if escolha == "telnyx" and not v["telnyx_number"]:
+            flash(f"{v['name']}: marcada como Telnyx, mas SEM número Telnyx. "
+                  f"Os envios vão falhar até você cadastrar um.")
+        else:
+            flash(f"{v['name']}: SMS agora via {rotulo}.")
     return redirect(request.referrer or url_for("venues"))
 
 
