@@ -63,12 +63,11 @@ CREATE TABLE IF NOT EXISTS venues (
     name          TEXT NOT NULL,
     token         TEXT NOT NULL,
     sender_number TEXT,
-    sender_telnyx TEXT NOT NULL DEFAULT '',
+    telnyx_number TEXT NOT NULL DEFAULT '',
     active        INTEGER NOT NULL DEFAULT 1,
     pinned        INTEGER NOT NULL DEFAULT 0,
     always_live   INTEGER NOT NULL DEFAULT 0,
     provider      TEXT NOT NULL DEFAULT '',
-    telnyx_number TEXT NOT NULL DEFAULT '',
     created_at    TEXT NOT NULL
 );
 
@@ -723,7 +722,7 @@ MIGRATIONS = {
         ("pinned",      "INTEGER NOT NULL DEFAULT 0"),
         ("always_live", "INTEGER NOT NULL DEFAULT 0"),
         ("provider",      "TEXT NOT NULL DEFAULT ''"),
-        ("sender_telnyx", "TEXT NOT NULL DEFAULT ''"),
+        ("telnyx_number", "TEXT NOT NULL DEFAULT ''"),
     ],
 }
 
@@ -886,32 +885,20 @@ def get_venue(venue_id: int):
 
 
 def update_venue(venue_id: int, name: str, sender_number: str, active: int,
-                 sender_telnyx: str = None):
+                 telnyx_number: str = None):
     db = get_db()
-    if sender_telnyx is None:
+    if telnyx_number is None:
         db.execute(
             "UPDATE venues SET name = ?, sender_number = ?, active = ? WHERE id = ?",
             (name, sender_number, active, venue_id),
         )
     else:
         db.execute(
-            "UPDATE venues SET name = ?, sender_number = ?, sender_telnyx = ?, "
+            "UPDATE venues SET name = ?, sender_number = ?, telnyx_number = ?, "
             "active = ? WHERE id = ?",
-            (name, sender_number, sender_telnyx, active, venue_id),
+            (name, sender_number, telnyx_number, active, venue_id),
         )
     db.commit()
-
-
-def remetente(venue, provedor: str) -> str:
-    """
-    O numero de origem depende do provedor: a Telnyx so envia por numeros da
-    conta Telnyx, e a Twilio so por numeros da conta Twilio.
-    Sem numero Telnyx cadastrado, devolve vazio — melhor falhar visivel do que
-    tentar enviar por um numero que nao e da conta.
-    """
-    if provedor == "telnyx":
-        return venue["sender_telnyx"] or ""
-    return venue["sender_number"] or ""
 
 
 def set_telnyx_number(venue_id: int, numero: str):
