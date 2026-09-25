@@ -39,6 +39,20 @@
       <button class="btn" type="submit">Salvar venue</button>
     </form>
 
+    <form method="post" action="{{ url_for('set_provider', venue_id=v.id) }}" style="margin-top:12px">
+      <div class="row">
+        <div>
+          <label for="prov-{{ v.id }}">Provedor de SMS desta venue</label>
+          <select id="prov-{{ v.id }}" name="provider">
+            <option value="" {{ 'selected' if not row.provider }}>Padrão global</option>
+            <option value="twilio" {{ 'selected' if row.provider == 'twilio' }}>Twilio</option>
+            <option value="telnyx" {{ 'selected' if row.provider == 'telnyx' }}>Telnyx</option>
+          </select>
+        </div>
+        <button class="btn ghost" type="submit">Trocar provedor</button>
+      </div>
+    </form>
+
     <form method="post" action="{{ url_for('rotate', venue_id=v.id) }}" style="margin-top:8px">
       <button class="btn ghost" type="submit">Gerar token novo</button>
     </form>

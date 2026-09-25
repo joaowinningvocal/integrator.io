@@ -124,6 +124,26 @@ def flatten(payload: dict) -> dict:
     return flat
 
 
+def quer_telnyx(flat: dict) -> bool:
+    """
+    A flag do payload: telnyx = true (ou "yes", "1"). Serve para o agente
+    escolher o provedor em uma chamada especifica, sem mexer no console —
+    util para testar a migracao um agente de cada vez.
+    """
+    for campo in ("telnyx", "use_telnyx", "provider"):
+        bruto = flat.get(campo)
+        if bruto is None:
+            continue
+        texto = str(bruto).strip().lower()
+        if campo == "provider":
+            if texto == "telnyx":
+                return True
+            continue
+        if texto in ("true", "yes", "sim", "1", "y"):
+            return True
+    return False
+
+
 def clean(value) -> str:
     text = ("" if value is None else str(value)).strip()
     return "" if text.lower() in BLANK else text
@@ -236,7 +256,7 @@ def _base_result(venue, flat: dict) -> dict:
     return {
         **fields, "flat": flat, "status": "ready", "note": "", "link": "",
         "package_label": "", "rule_name": "", "channel": "", "subject": "",
-        "recipient": "", "recipient_source": "",
+        "recipient": "", "recipient_source": "", "provider_flag": False,
         "body": "", "sms_body": "", "sms_from": venue["sender_number"] or "",
     }
 
@@ -309,6 +329,7 @@ def _apply_rule(venue, flat: dict, rule) -> dict:
         ctx["link"] = pkg["link"]
         ctx["package"] = pkg["label"]
 
+    result["provider_flag"] = quer_telnyx(flat)
     result["body"] = render(tpl["body"], ctx)
     result["subject"] = render(tpl["subject"] or "", ctx)
     # Destinatário: a regra tem precedência sobre o template. Assim um template

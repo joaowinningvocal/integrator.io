@@ -34,6 +34,8 @@ callback de status. O envio só acontece no modo escolhido no topo do console.
    | `SMTP_PORT` | opcional, padrão `587` |
    | `SMTP_FROM` | opcional; se omitido usa `SMTP_USER` |
    | `HOOK_TOKEN_SALT` | torna os tokens dos webhooks estáveis — veja abaixo |
+   | `TELNYX_API_KEY` | chave de API da Telnyx (só se for usar Telnyx) |
+   | `TELNYX_MESSAGING_PROFILE_ID` | opcional; o Messaging Profile da Telnyx |
 
 5. *Settings → Networking → Generate Domain*.
 6. Confira `https://SEU-APP.up.railway.app/health` → deve responder
@@ -136,6 +138,37 @@ funcionar. Depois clique **Reenviar** na chamada, e o cliente recebe.
 O hub nunca escolhe um pacote parecido sozinho. "Over The Top" casaria tanto com
 o pacote de \$1200 quanto com o de \$150 — mandar o checkout errado é pior que
 não mandar link nenhum.
+
+## Provedor de SMS: Twilio ou Telnyx
+
+Quem decide, em ordem de precedência:
+
+1. **Flag no payload** — `telnyx: true` (aceita `true`, `yes`, `sim`, `1`), ou
+   `provider: "telnyx"`. Decide uma chamada específica, sem tocar no console.
+   Serve para testar a Telnyx num agente só.
+2. **Ajuste da venue** — em Venues, cada uma escolhe Twilio, Telnyx, ou "padrão
+   global". Serve para migrar uma venue de cada vez.
+3. **Padrão global** — em Ajustes. Serve para migrar tudo.
+
+Qualquer coisa fora disso cai no Twilio.
+
+A coluna **Via** na tabela de Entregas mostra por qual provedor cada mensagem
+saiu, então dá para conferir que a rota foi a esperada.
+
+O callback de status da Telnyx tem formato próprio (`data.payload`, com o status
+dentro da lista `to`) e endpoint próprio, `/telnyx/status/<token>`. O hub manda a
+URL em cada mensagem — não precisa configurar nada no portal da Telnyx.
+
+### Migração sugerida
+
+1. Defina `TELNYX_API_KEY` no Railway e confirme em Ajustes que aparece
+   "credenciais ok".
+2. Troque **uma venue** para Telnyx e observe um dia. Confira a coluna Via e se
+   os status chegam a `delivered`.
+3. Repita para as demais, ou troque o padrão global de uma vez.
+4. Os números precisam existir e estar habilitados para SMS **na conta Telnyx** —
+   um número da Twilio não envia pela Telnyx. Erro `40301` significa exatamente
+   isso.
 
 ## Canais
 

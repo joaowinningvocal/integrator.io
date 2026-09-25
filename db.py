@@ -66,6 +66,7 @@ CREATE TABLE IF NOT EXISTS venues (
     active        INTEGER NOT NULL DEFAULT 1,
     pinned        INTEGER NOT NULL DEFAULT 0,
     always_live   INTEGER NOT NULL DEFAULT 0,
+    provider      TEXT NOT NULL DEFAULT '',
     created_at    TEXT NOT NULL
 );
 
@@ -168,6 +169,7 @@ DEFAULT_SETTINGS = {
     "test_allowlist": "",
     "status_callback_token": "",
     "notify_email": "",
+    "sms_provider": "twilio",
 }
 
 # --------------------------------------------------------------------------
@@ -715,6 +717,7 @@ MIGRATIONS = {
     "venues": [
         ("pinned",      "INTEGER NOT NULL DEFAULT 0"),
         ("always_live", "INTEGER NOT NULL DEFAULT 0"),
+        ("provider",    "TEXT NOT NULL DEFAULT ''"),
     ],
 }
 
@@ -876,6 +879,13 @@ def update_venue(venue_id: int, name: str, sender_number: str, active: int):
         "UPDATE venues SET name = ?, sender_number = ?, active = ? WHERE id = ?",
         (name, sender_number, active, venue_id),
     )
+    db.commit()
+
+
+def set_venue_provider(venue_id: int, provider: str):
+    """provider vazio = usa o padrao global."""
+    db = get_db()
+    db.execute("UPDATE venues SET provider = ? WHERE id = ?", (provider or "", venue_id))
     db.commit()
 
 

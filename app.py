@@ -25,6 +25,7 @@ import db
 import engine
 import mailer
 import sender
+import telnyx
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "dev-only-change-me")
@@ -51,6 +52,16 @@ def public_base_url() -> str:
     return base
 
 
+def telnyx_callback_url() -> str:
+    """A Telnyx chama esta URL quando o status da mensagem muda."""
+    base = public_base_url()
+    if not base:
+        return ""
+    with app.app_context():
+        token = db.get_setting("status_callback_token", "")
+    return f"{base}/telnyx/status/{token}" if token else ""
+
+
 def status_callback_url() -> str:
     """URL que a Twilio chama quando o status da mensagem muda."""
     base = public_base_url()
@@ -71,9 +82,13 @@ def _retry_all(app_ref):
                 with app_ref.app_context():
                     pending = db.pending_retries()
                     callback = status_callback_url()
+                with app_ref.app_context():
+                    callback_tx = telnyx_callback_url()
                 for d in pending:
                     if d["channel"] == "email":
                         mailer.dispatch(app_ref, d["id"])
+                    elif d["provider"] == "telnyx":
+                        telnyx.dispatch(app_ref, d["id"], callback_tx)
                     else:
                         sender.dispatch(app_ref, d["id"], callback)
                     time.sleep(1)
@@ -228,6 +243,23 @@ def inbound(slug, token=None):
     return jsonify(ok=True, event=event_id, status=status, mode=mode), 200
 
 
+def resolver_provedor(venue, result) -> str:
+    """
+    Quem decide o provedor de SMS, em ordem de precedencia:
+
+      1. flag no payload  (telnyx=true)  — decide uma chamada especifica
+      2. ajuste da venue                 — migra uma venue de cada vez
+      3. padrao global em Ajustes        — migra tudo
+
+    Qualquer coisa fora disso cai no Twilio.
+    """
+    if result.get("provider_flag"):
+        return "telnyx"
+    if venue["provider"]:
+        return venue["provider"]
+    return db.get_setting("sms_provider", "twilio")
+
+
 def _create_and_send(event_id, venue, result) -> int:
     """Cria a entrega e despacha pelo adapter do canal da regra."""
     if result["channel"] == "email":
@@ -238,11 +270,16 @@ def _create_and_send(event_id, venue, result) -> int:
         )
         mailer.dispatch(app, delivery_id)
     else:
+        provedor = resolver_provedor(venue, result)
         delivery_id = db.create_delivery(
             event_id, venue["id"], result["customer_phone"], result["sms_from"],
             result["body"], channel="sms", rule_name=result["rule_name"],
         )
-        sender.dispatch(app, delivery_id, status_callback_url())
+        db.update_delivery(delivery_id, provider=provedor)
+        if provedor == "telnyx":
+            telnyx.dispatch(app, delivery_id, telnyx_callback_url())
+        else:
+            sender.dispatch(app, delivery_id, status_callback_url())
     return delivery_id
 
 
@@ -304,6 +341,7 @@ def inject_globals():
         "venues_nav": db.list_venues(),
         "delivery_labels": DELIVERY_LABELS,
         "twilio_ready": sender.configured(),
+        "telnyx_ready": telnyx.configured(),
     }
 
 
@@ -496,6 +534,7 @@ def venues():
             "url": f"{base}/hook/{v['slug']}/k/{v['token']}",
             "packages": db.list_packages(v["id"]),
             "template": db.get_template(v["id"], "booking_link"),
+            "provider": v["provider"],
         })
     return render_template("venues.html", rows=rows)
 
@@ -680,12 +719,48 @@ def testbench():
     )
 
 
+@app.route("/telnyx/status/<token>", methods=["POST"])
+def telnyx_status(token):
+    """
+    Webhook de status da Telnyx. Formato diferente do da Twilio: o id e o
+    status vem aninhados em data.payload.
+    """
+    esperado = db.get_setting("status_callback_token", "")
+    if not esperado or not hmac.compare_digest(token, esperado):
+        return ("", 403)
+
+    sid, status, codigo = telnyx.parse_status_webhook(request.get_json(silent=True))
+    d = db.delivery_by_sid(sid) if sid else None
+    if d and status:
+        campos = {"status": status}
+        if codigo:
+            campos["error_code"] = codigo
+            campos["error_message"] = telnyx.FRIENDLY.get(codigo, f"Telnyx codigo {codigo}")
+        db.update_delivery(d["id"], **campos)
+    return ("", 204)
+
+
+@app.route("/venues/<int:venue_id>/provider", methods=["POST"])
+@login_required
+def set_provider(venue_id):
+    escolha = request.form.get("provider", "")
+    if escolha in ("", "twilio", "telnyx"):
+        db.set_venue_provider(venue_id, escolha)
+        v = db.get_venue(venue_id)
+        rotulo = escolha or "padrão global"
+        flash(f"{v['name']}: SMS agora via {rotulo}.")
+    return redirect(request.referrer or url_for("venues"))
+
+
 @app.route("/settings", methods=["GET", "POST"])
 @login_required
 def settings():
     if request.method == "POST":
         db.set_setting("test_allowlist", request.form.get("test_allowlist", "").strip())
         db.set_setting("notify_email", request.form.get("notify_email", "").strip())
+        escolha = request.form.get("sms_provider")
+        if escolha in ("twilio", "telnyx"):
+            db.set_setting("sms_provider", escolha)
         flash("Ajustes salvos.")
         return redirect(url_for("settings"))
     return render_template(
@@ -695,6 +770,9 @@ def settings():
         callback=status_callback_url(),
         notify_email=db.get_setting("notify_email", ""),
         smtp_ready=mailer.configured(),
+        sms_provider=db.get_setting("sms_provider", "twilio"),
+        telnyx_ready=telnyx.configured(),
+        telnyx_callback=telnyx_callback_url(),
         smtp_from=mailer.sender_address(),
         deliveries=db.list_deliveries(limit=60),
     )

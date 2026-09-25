@@ -68,7 +68,7 @@
 <div class="panel">
   <table>
     <thead>
-      <tr><th>Quando</th><th>Para</th><th>De</th><th>Status</th>
+      <tr><th>Quando</th><th>Para</th><th>De</th><th>Via</th><th>Status</th>
           <th>Tentativas</th><th>SID</th><th>Erro</th></tr>
     </thead>
     <tbody>
@@ -78,6 +78,7 @@
         <td>{{ d.updated_at[:16].replace('T', ' ') }}</td>
         <td>{{ d.to_number }}</td>
         <td>{{ d.from_number }}</td>
+        <td>{{ d.provider }}</td>
         <td><span class="state {{ dtone }}">{{ lbl }}</span></td>
         <td>{{ d.attempts }}</td>
         <td>{{ d.provider_sid or '—' }}</td>

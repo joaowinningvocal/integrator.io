@@ -31,6 +31,46 @@
 </div>
 
 <div class="panel">
+  <h2 style="margin-top:0">Provedor de SMS</h2>
+  <p class="sub">Vale para as venues que não escolheram um provedor próprio.</p>
+
+  <div class="grid-2">
+    <p class="meter">
+      Twilio:
+      {% if twilio_ready %}<span class="pill live">credenciais ok</span>
+      {% else %}<span class="pill fault">não configurado</span>{% endif %}
+    </p>
+    <p class="meter">
+      Telnyx:
+      {% if telnyx_ready %}<span class="pill live">credenciais ok</span>
+      {% else %}<span class="pill fault">TELNYX_API_KEY ausente</span>{% endif %}
+    </p>
+  </div>
+
+  <form method="post">
+    <div class="field">
+      <label for="prov">Padrão global</label>
+      <select id="prov" name="sms_provider">
+        <option value="twilio" {{ 'selected' if sms_provider == 'twilio' }}>Twilio</option>
+        <option value="telnyx" {{ 'selected' if sms_provider == 'telnyx' }}>Telnyx</option>
+      </select>
+      <p class="hint">Um payload com <code>telnyx: true</code> força a Telnyx,
+         e o ajuste de cada venue vence este padrão.</p>
+    </div>
+    <input type="hidden" name="notify_email" value="{{ notify_email }}">
+    <input type="hidden" name="test_allowlist" value="{{ allowlist }}">
+    <div class="toolbar"><button class="btn" type="submit">Salvar provedor</button></div>
+  </form>
+
+  {% if telnyx_callback %}
+  <label class="raw" style="margin-top:16px">URL de callback da Telnyx</label>
+  <div class="url-box">{{ telnyx_callback }}</div>
+  <p class="meter">Enviada automaticamente em cada mensagem — não precisa
+     configurar no portal da Telnyx.</p>
+  {% endif %}
+</div>
+
+<div class="panel">
   <h2 style="margin-top:0">Notificação por e-mail</h2>
   {% if smtp_ready %}
     <p class="meter"><b style="color:var(--live)">SMTP configurado.</b>
@@ -51,6 +91,7 @@
          "Sem destinatário".</p>
     </div>
     <input type="hidden" name="test_allowlist" value="{{ allowlist }}">
+    <input type="hidden" name="sms_provider" value="{{ sms_provider }}">
     <div class="toolbar"><button class="btn" type="submit">Salvar destinatário</button></div>
   </form>
 </div>
@@ -66,6 +107,7 @@
       <p class="meter">Reconhecidos: <b>{{ parsed | join(', ') }}</b></p>
     {% endif %}
     <input type="hidden" name="notify_email" value="{{ notify_email }}">
+    <input type="hidden" name="sms_provider" value="{{ sms_provider }}">
     <div class="toolbar"><button class="btn" type="submit">Salvar allowlist</button></div>
   </form>
 </div>
