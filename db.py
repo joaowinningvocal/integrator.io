@@ -491,10 +491,10 @@ SEED_VENUES = [
         "sender_number": "+12697754582",
         "template": KALAMAZOO_TEMPLATE,
         "packages": [
-            ("18th Birthday", "", "https://vip-packages.com/products/deja-vu-showgirls-kalamazoo-18th-birthday"),
-            ("Couples Package", "", "https://vip-packages.com/products/deja-vu-showgirls-kalamazoo-couples-package-1"),
-            ("Group of 8", "", "https://vip-packages.com/products/deja-vu-showgirls-kalamazoo-groups-of-8-vip-package"),
-            ("Group of 10", "", "https://vip-packages.com/products/deja-vu-showgirls-kalamazoo-groups-of-10-vip-package"),
+            ("18th Birthday", "", "https://app.cartvip.com/deja-vu-showgirls-kalamazoo/package/18th-birthday-127/checkout"),
+            ("Couples Package", "", "https://app.cartvip.com/deja-vu-showgirls-kalamazoo/package/couples-package-128/checkout"),
+            ("Group of 8", "", "https://app.cartvip.com/deja-vu-showgirls-kalamazoo/package/group-of-8-129/checkout"),
+            ("Group of 10", "", "https://app.cartvip.com/deja-vu-showgirls-kalamazoo/package/group-of-10-130/checkout"),
         ],
     },
     {
@@ -503,13 +503,13 @@ SEED_VENUES = [
         "sender_number": "+19163504781",
         "template": STOCKTON_TEMPLATE,
         "packages": [
-            ("VIP One Time Admission", "", "https://vip-packages.com/products/deja-vu-showgirls-stockton-vip-one-time-admission"),
-            ("Couples Package", "", "https://vip-packages.com/products/deja-vu-showgirls-stockton-couples-package"),
+            ("VIP One Time Admission", "", "https://app.cartvip.com/deja-vu-showgirls-stockton/package/vip-one-time-admission-136/checkout"),
+            ("Couples Package", "", "https://app.cartvip.com/deja-vu-showgirls-stockton/package/couples-package-137/checkout"),
             # No Make esta rota apontava para o link do Couples Package.
-            ("Silver VIP Party", "", "https://vip-packages.com/products/deja-vu-showgirls-stockton-silver-vip-party"),
-            ("Gold VIP Party", "", "https://vip-packages.com/products/deja-vu-showgirls-stockton-gold-vip-party"),
-            ("Platinum VIP Party", "", "https://vip-packages.com/products/deja-vu-showgirls-stockton-platinum-vip-party"),
-            ("VIP Baller Package", "", "https://vip-packages.com/products/deja-vu-showgirls-stockton-vip-baller-package"),
+            ("Silver VIP Party", "", "https://app.cartvip.com/deja-vu-showgirls-stockton/package/silver-vip-party-138/checkout"),
+            ("Gold VIP Party", "", "https://app.cartvip.com/deja-vu-showgirls-stockton/package/gold-vip-party-139/checkout"),
+            ("Platinum VIP Party", "", "https://app.cartvip.com/deja-vu-showgirls-stockton/package/platinum-vip-party-140/checkout"),
+            ("VIP Baller Package", "", "https://app.cartvip.com/deja-vu-showgirls-stockton/package/vip-baller-package-141/checkout"),
         ],
     },
     {
@@ -518,11 +518,11 @@ SEED_VENUES = [
         "sender_number": "+17348965038",
         "template": YPSILANTI_TEMPLATE,
         "packages": [
-            ("VIP One Time Admission", "", "https://vip-packages.com/products/deja-vu-showgirls-ypsilanti-vip-one-time-admission"),
-            ("Couples Package", "", "https://vip-packages.com/products/deja-vu-showgirls-ypsilanti-couples-package"),
-            ("Silver VIP", "", "https://vip-packages.com/products/deja-vu-showgirls-ypsilanti-silver-vip-party"),
-            ("Gold VIP", "", "https://vip-packages.com/products/deja-vu-showgirls-ypsilanti-gold-vip-party"),
-            ("Platinum VIP", "", "https://vip-packages.com/products/deja-vu-showgirls-ypsilanti-platinum-vip-party"),
+            ("VIP One Time Admission", "", "https://app.cartvip.com/deja-vu-showgirls-ypsilanti/package/vip-one-time-admission-131/checkout"),
+            ("Couples Package", "", "https://app.cartvip.com/deja-vu-showgirls-ypsilanti/package/couples-package-132/checkout"),
+            ("Silver VIP", "", "https://app.cartvip.com/deja-vu-showgirls-ypsilanti/package/silver-vip-party-133/checkout"),
+            ("Gold VIP", "", "https://app.cartvip.com/deja-vu-showgirls-ypsilanti/package/gold-vip-party-134/checkout"),
+            ("Platinum VIP", "", "https://app.cartvip.com/deja-vu-showgirls-ypsilanti/package/platinum-vip-party-135/checkout"),
         ],
     },
     {
